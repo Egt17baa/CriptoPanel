@@ -1,0 +1,21 @@
+[
+  {
+    "id": "270", "name": "Binance CEX", "slug": "binance-cex", "logo": "https://icons.llama.fi/binance-cex.jpg",
+    "category": "CEX", "chains": ["Bitcoin", "Ethereum"], "tvl": 150000000000, "change_1d": 0.1,
+    "chainTvls": { "Bitcoin": 80000000000, "Ethereum": 70000000000 }
+  },
+  {
+    "id": "182", "name": "Lido", "slug": "lido", "logo": "https://icons.llama.fi/lido.png",
+    "category": "Liquid Staking", "chains": ["Ethereum", "Solana"], "tvl": 10500000000, "change_1d": -0.3,
+    "chainTvls": { "Ethereum": 10000000000, "Solana": 500000000 }
+  },
+  {
+    "id": "1599", "name": "Aave V3", "slug": "aave", "logo": "https://icons.llama.fi/aave-v3.png",
+    "category": "Lending", "chains": ["Ethereum", "Arbitrum"], "tvl": 25000000000, "change_1d": null,
+    "chainTvls": { "Ethereum": 20000000000, "Arbitrum": 5000000000, "Ethereum-borrowed": 10000000000, "borrowed": 12000000000 }
+  },
+  {
+    "id": "9999", "name": "Ghost", "slug": "ghost", "logo": null,
+    "category": "Dexs", "chains": ["Ethereum"], "tvl": null, "change_1d": null, "chainTvls": {}
+  }
+]

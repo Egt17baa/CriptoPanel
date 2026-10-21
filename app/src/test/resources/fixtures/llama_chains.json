@@ -1,0 +1,6 @@
+[
+  { "gecko_id": "solana", "tvl": 10000000000, "tokenSymbol": "SOL", "cmcId": "5426", "name": "Solana", "chainId": null },
+  { "gecko_id": "ethereum", "tvl": 60000000000, "tokenSymbol": "ETH", "cmcId": "1027", "name": "Ethereum", "chainId": 1 },
+  { "gecko_id": "optimism", "tvl": 25000000000, "tokenSymbol": "OP", "cmcId": "11840", "name": "OP Mainnet", "chainId": 10 },
+  { "gecko_id": null, "tvl": 0, "tokenSymbol": null, "cmcId": null, "name": "Deadchain", "chainId": null }
+]
