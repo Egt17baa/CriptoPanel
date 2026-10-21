@@ -95,7 +95,7 @@ Con esto cada historia tiene al menos dos conexiones (las cuatro últimas las a�
 
 ### Cómo se escribe cada historia
 
-- **Tono (decisión mía, pendiente de confirmar con el usuario):** el miedo viene de lo que se insinúa y del detalle real, nunca de la descripción explícita de la violencia. Con víctimas reales, sobre todo niños, el relato es sobrio y respetuoso.
+- **Tono (confirmado por el usuario):** el miedo viene de lo que se insinúa y del detalle real, nunca de la descripción explícita de la violencia. Con víctimas reales, sobre todo niños, el relato es sobrio y respetuoso.
 - **Extensión:** de 600 a 1.000 palabras, unos 4–6 minutos de lectura.
 - **Estructura:**
   1. Frase de impacto para la pantalla de entrada.
@@ -111,7 +111,7 @@ Con esto cada historia tiene al menos dos conexiones (las cuatro últimas las a�
 
 - **Web estática**, sin servidor: rápida, barata y fácil de publicar. Quien la construya elige si es HTML, CSS y JavaScript sin framework o un generador estático ligero como Astro, que facilitaría la fase 2.
 - **Contenido separado del diseño:** cada historia en su propio archivo de datos (Markdown con cabecera o JSON), para que añadir historias no exija tocar el código.
-- **Publicación:** GitHub Pages desde este repositorio, con un flujo de GitHub Actions. Un dominio propio se puede conectar después.
+- **Repositorio y publicación (decidido por el usuario):** el código vive en un repositorio nuevo, `enigma-y-terror`. El usuario va a comprar un dominio y un hosting, así que la web se genera como archivos estáticos que se puedan subir a cualquier hosting, sin depender de GitHub Pages. Todas las rutas funcionan desde la raíz del dominio.
 - **Sin rastreadores ni cookies.**
 
 ## Herramientas que se usan (petición del usuario: todas las instaladas)
