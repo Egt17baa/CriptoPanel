@@ -7,9 +7,16 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
-val localProps = Properties().apply {
-    rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
+fun loadProps(name: String) = Properties().apply {
+    rootProject.file(name).takeIf { it.exists() }?.inputStream()?.use { load(it) }
 }
+
+val localProps = loadProps("local.properties")
+
+// Upload key for Google Play: keystore.properties (never committed) or, on CI, environment variables.
+val keystoreProps = loadProps("keystore.properties")
+fun signingValue(key: String, env: String): String? = keystoreProps.getProperty(key) ?: System.getenv(env)
+val releaseStoreFile = signingValue("storeFile", "CRIPTOPANEL_KEYSTORE_FILE")
 
 android {
     namespace = "app.criptopanel"
@@ -19,14 +26,38 @@ android {
         applicationId = "app.criptopanel"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        // Every Play upload needs a higher versionCode: pass -PversionCode=N (CI uses the run number).
+        versionCode = (project.findProperty("versionCode") as String?)?.toInt() ?: 1
+        versionName = "1.0.0"
         buildConfigField("String", "COINGECKO_DEMO_KEY", "\"${localProps.getProperty("COINGECKO_DEMO_KEY", "")}\"")
+    }
+
+    signingConfigs {
+        // Shared debug key (not secret, never accepted by Play) so local and CI test builds update each other.
+        getByName("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+        if (releaseStoreFile != null) {
+            create("release") {
+                storeFile = rootProject.file(releaseStoreFile)
+                storePassword = signingValue("storePassword", "CRIPTOPANEL_KEYSTORE_PASSWORD")
+                keyAlias = signingValue("keyAlias", "CRIPTOPANEL_KEY_ALIAS")
+                keyPassword = signingValue("keyPassword", "CRIPTOPANEL_KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            // Without an upload key the release build is signed with the debug key so it can be installed
+            // for testing; Google Play rejects that signature, so a real upload always needs keystore.properties.
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }
     }
     compileOptions {

@@ -5,3 +5,7 @@ local.properties
 *.iml
 .kotlin/
 CriptoPanel.zip
+keystore.properties
+*.jks
+*.keystore
+!app/debug.keystore

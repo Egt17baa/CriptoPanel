@@ -47,6 +47,15 @@ y añádela a `local.properties`:
 COINGECKO_DEMO_KEY=tu_clave
 ```
 
+## Publicar en Google Play
+
+Guía paso a paso, textos de la ficha y política de privacidad en [`docs/google-play/`](docs/google-play/PUBLICAR.md).
+Icono y gráfico destacado en [`store/`](store/).
+
+```bash
+./gradlew :app:bundleRelease -PversionCode=1   # AAB firmado con tu clave (keystore.properties)
+```
+
 ## Tests sin SDK de Android
 
 `jvm-check/` es un proyecto Gradle que compila la lógica de `app/src/main` (todo salvo las pantallas)
