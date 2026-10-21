@@ -92,4 +92,27 @@ class MarketRepositoryTest {
         repeat(3) { server.takeRequest() }
         assertEquals("/tickers/?start=0&limit=100", server.takeRequest().path)
     }
+
+    @Test fun `coin id from the fallback list is resolved through search`() = runTest {
+        server.enqueue(MockResponse().setResponseCode(404))
+        server.enqueue(MockResponse().setBody("""{"coins":[{"id":"binancecoin","name":"BNB","symbol":"BNB","market_cap_rank":4}]}"""))
+        server.enqueueFixture("cg_coin_bitcoin.json")
+        server.enqueueFixture("cg_market_chart.json")
+        assertTrue(repo.coin("binance-coin") is Outcome.Ok)
+        assertTrue(repo.chart("binance-coin", app.criptopanel.coins.ChartRange.W1) is Outcome.Ok)
+        assertEquals("/coins/binance-coin?localization=false&tickers=false&community_data=false&developer_data=false", server.takeRequest().path)
+        assertEquals("/search?query=binance%20coin", server.takeRequest().path)
+        assertTrue(server.takeRequest().path!!.startsWith("/coins/binancecoin?"))
+        assertTrue(server.takeRequest().path!!.startsWith("/coins/binancecoin/market_chart"))
+    }
+
+    @Test fun `missing global total is an error, not zero`() = runTest {
+        server.enqueue(MockResponse().setBody("""[{"btc_d":"60.1","eth_d":"10.2"}]"""))
+        assertTrue(repo.global() is Outcome.Err)
+    }
+
+    @Test fun `null sparkline points are skipped`() = runTest {
+        server.enqueue(MockResponse().setBody("""[{"id":"x","symbol":"x","name":"X","sparkline_in_7d":{"price":[1.0,null,2.0]}}]"""))
+        assertEquals(listOf(1.0, 2.0), (repo.topCoins() as Outcome.Ok).value.single().sparkline7d)
+    }
 }

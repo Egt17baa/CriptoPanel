@@ -32,6 +32,7 @@ import app.criptopanel.core.format.formatCompactUsd
 import app.criptopanel.core.format.formatPercent
 import app.criptopanel.core.format.formatUsd
 import app.criptopanel.core.ui.AutoRefresh
+import app.criptopanel.core.ui.EmptyMessage
 import app.criptopanel.core.ui.LineChart
 import app.criptopanel.core.ui.NegativeColor
 import app.criptopanel.core.ui.PositiveColor
@@ -67,6 +68,7 @@ fun TopCoinsScreen(vm: TopCoinsViewModel, onCoin: (String) -> Unit) {
                 }
             }
             StateContent(state, onRefresh = { vm.refresh(force = true) }) { coins ->
+                if (coins.isEmpty()) EmptyMessage("Sin resultados")
                 LazyColumn {
                     items(coins, key = { it.id }) { coin ->
                         CoinRow(coin, onClick = { onCoin(coin.id) })

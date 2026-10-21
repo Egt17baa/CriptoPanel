@@ -20,7 +20,7 @@ data class CoinMarketDto(
 )
 
 @Serializable
-data class SparklineDto(val price: List<Double> = emptyList())
+data class SparklineDto(val price: List<Double?> = emptyList())
 
 @Serializable
 data class CoinDetailDto(

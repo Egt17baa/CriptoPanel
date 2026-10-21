@@ -32,7 +32,15 @@ fun ErrorBanner(error: AppError, modifier: Modifier = Modifier) {
 
 @Composable
 fun LoadingBox(modifier: Modifier = Modifier) {
-    Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+    // Fixed top padding instead of fillMaxSize: this sits inside a vertically scrollable column.
+    Box(modifier.fillMaxWidth().padding(top = 96.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+}
+
+@Composable
+fun EmptyMessage(text: String, modifier: Modifier = Modifier) {
+    Box(modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+        Text(text, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
 }
 
 /** Pull-to-refresh wrapper: spinner on first load, error banner above the last good data. */

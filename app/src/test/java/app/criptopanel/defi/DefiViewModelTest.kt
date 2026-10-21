@@ -61,4 +61,11 @@ class DefiViewModelTest {
         val bnb = Protocol("pancakeswap", "PancakeSwap", null, "Dexs", 3.0e9, null, listOf("Binance"), mapOf("Binance" to 3.0e9))
         assertEquals(listOf("pancakeswap" to 3.0e9), protocolsOnChain(listOf(bnb), "BSC").map { it.first.slug to it.second })
     }
+
+    @Test fun `protocols on chain match renamed chains case-insensitively`() {
+        val p = Protocol("x", "X", null, "Dexs", 2.0e8, null, emptyList(), mapOf("xDai" to 1.0e8, "Thorchain" to 5.0e7, "Elrond" to 3.0e7))
+        assertEquals(listOf(1.0e8), protocolsOnChain(listOf(p), "Gnosis").map { it.second })
+        assertEquals(listOf(5.0e7), protocolsOnChain(listOf(p), "THORChain").map { it.second })
+        assertEquals(listOf(3.0e7), protocolsOnChain(listOf(p), "MultiversX").map { it.second })
+    }
 }

@@ -1,6 +1,7 @@
 package app.criptopanel.navigation
 
 import android.net.Uri
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
@@ -77,7 +78,7 @@ fun AppNavHost() {
             }
         },
     ) { padding ->
-        NavHost(nav, startDestination = "market", modifier = Modifier.padding(padding)) {
+        NavHost(nav, startDestination = "market", modifier = Modifier.padding(padding).consumeWindowInsets(padding)) {
             composable("market") {
                 OverviewScreen(
                     vm = viewModel { OverviewViewModel(container.marketRepository) },
@@ -95,7 +96,7 @@ fun AppNavHost() {
             composable("top") {
                 TopCoinsScreen(
                     vm = viewModel { TopCoinsViewModel(container.marketRepository) },
-                    onCoin = { id -> nav.navigate("coin/$id") },
+                    onCoin = { id -> nav.navigate("coin/${Uri.encode(id)}") },
                 )
             }
             composable("coin/{id}") { entry ->
@@ -108,7 +109,7 @@ fun AppNavHost() {
             composable("search") {
                 SearchScreen(
                     vm = viewModel { SearchViewModel(container.marketRepository) },
-                    onCoin = { id -> nav.navigate("coin/$id") },
+                    onCoin = { id -> nav.navigate("coin/${Uri.encode(id)}") },
                     onBack = { nav.popBackStack() },
                 )
             }

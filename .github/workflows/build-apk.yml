@@ -22,7 +22,7 @@ jobs:
           java-version: 17
 
       - name: Test and build
-        run: ./gradlew :app:testDebugUnitTest :app:assembleRelease --no-daemon
+        run: ./gradlew :app:testDebugUnitTest :app:lintRelease :app:assembleRelease --no-daemon
 
       - name: Rename APK
         run: cp app/build/outputs/apk/release/app-release.apk CriptoPanel.apk

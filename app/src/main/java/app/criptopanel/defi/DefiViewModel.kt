@@ -7,6 +7,7 @@ import app.criptopanel.core.ui.UiState
 import app.criptopanel.core.ui.loading
 import app.criptopanel.core.ui.with
 import kotlinx.coroutines.async
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,9 +23,11 @@ data class DefiOverview(
 
 /** Protocols active on [chain], paired with their TVL on that chain, largest first. */
 fun protocolsOnChain(protocols: List<Protocol>, chain: String): List<Pair<Protocol, Double>> {
-    val names = listOfNotNull(chain, legacyChainNames[chain])
+    val names = listOfNotNull(chain, legacyChainNames[chain]).map { it.lowercase() }
     return protocols
-        .mapNotNull { p -> names.firstNotNullOfOrNull { p.chainTvls[it] }?.let { p to it } }
+        .mapNotNull { p ->
+            p.chainTvls.entries.firstOrNull { it.key.lowercase() in names }?.let { p to it.value }
+        }
         .sortedByDescending { it.second }
 }
 
@@ -32,15 +35,48 @@ fun protocolsOnChain(protocols: List<Protocol>, chain: String): List<Pair<Protoc
 private val legacyChainNames = mapOf(
     "BSC" to "Binance",
     "OP Mainnet" to "Optimism",
+    "Gnosis" to "xDai",
+    "Rootstock" to "RSK",
+    "Hydration" to "HydraDX",
+    "PulseChain" to "Pulse",
+    "XPR Network" to "Proton",
+    "Vaulta" to "EOS",
+    "XRPL" to "Ripple",
+    "Strato Chain" to "Strato",
+    "MultiversX" to "Elrond",
+    "ReyaChain" to "Reya Network",
+    "Kaia" to "Klaytn",
+    "KUB" to "Bitkub",
+    "Fuel Ignition" to "Fuel",
+    "WEMIX3.0" to "WEMIX",
+    "OKTChain" to "OKExChain",
+    "opBNB" to "Op_Bnb",
+    "MAP Protocol" to "Map",
+    "Terra Classic" to "Terra",
+    "KCC" to "Kucoin",
+    "Oasis Sapphire" to "Sapphire",
+    "Oasis Emerald" to "Oasis",
+    "Oraichain" to "Orai",
+    "CosmosHub" to "Cosmos",
+    "Data Network" to "Story",
+    "Viction" to "TomoChain",
+    "zkLink Nova" to "zkLink",
+    "SKALE Europa" to "Europa",
+    "Persistence One" to "Persistence",
+    "Unit Zero" to "UNIT0",
+    "HSK Chain" to "HashKey Chain",
 )
 
 class DefiViewModel(private val repo: DefiRepository) : ViewModel() {
     private val _state = MutableStateFlow(UiState<DefiOverview>())
     val state: StateFlow<UiState<DefiOverview>> = _state.asStateFlow()
 
+    private var refreshJob: Job? = null
+
     fun refresh(force: Boolean = false) {
         _state.update { it.loading() }
-        viewModelScope.launch {
+        refreshJob?.cancel()
+        refreshJob = viewModelScope.launch {
             val history = async { repo.totalHistory(force) }
             val chains = async { repo.chains(force) }
             val protocols = async { repo.protocols(force) }

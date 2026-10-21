@@ -20,6 +20,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -31,7 +32,9 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.criptopanel.core.ui.EmptyMessage
 import app.criptopanel.core.ui.ErrorBanner
+import app.criptopanel.core.ui.LoadingBox
 import coil3.compose.AsyncImage
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -60,7 +63,15 @@ fun SearchScreen(vm: SearchViewModel, onCoin: (String) -> Unit, onBack: () -> Un
                 modifier = Modifier.fillMaxWidth().padding(12.dp).focusRequester(focus),
             )
             LaunchedEffect(Unit) { focus.requestFocus() }
-            results.error?.let { ErrorBanner(it) }
+            results.error?.let {
+                ErrorBanner(it)
+                TextButton(onClick = vm::retry, modifier = Modifier.padding(horizontal = 4.dp)) { Text("Reintentar") }
+            }
+            when {
+                results.loading -> LoadingBox()
+                results.error == null && query.trim().length >= SEARCH_MIN_CHARS && results.data.isNullOrEmpty() ->
+                    EmptyMessage("Sin resultados")
+            }
             LazyColumn {
                 items(results.data.orEmpty(), key = { it.id }) { coin ->
                     Row(

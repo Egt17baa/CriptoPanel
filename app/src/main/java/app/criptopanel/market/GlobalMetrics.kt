@@ -12,16 +12,17 @@ data class GlobalMetrics(
 
 /** TOTAL2 = TOTAL − BTC cap; TOTAL3 = TOTAL − BTC cap − ETH cap (TradingView definitions). */
 fun CoinLoreGlobalDto.toMetrics(): GlobalMetrics {
-    val total = totalMcap ?: 0.0
-    val btcPct = btcD.asDouble() ?: 0.0
-    val ethPct = ethD.asDouble() ?: 0.0
+    // Missing figures are an error (last good data stays on screen), never a fake 0,00 $.
+    val total = requireNotNull(totalMcap) { "CoinLore global without total_mcap" }
+    val btcPct = requireNotNull(btcD.asDouble()) { "CoinLore global without btc_d" }
+    val ethPct = requireNotNull(ethD.asDouble()) { "CoinLore global without eth_d" }
     return GlobalMetrics(
         totalCap = total,
         total2 = total * (1 - btcPct / 100),
         total3 = total * (1 - btcPct / 100 - ethPct / 100),
         btcDominance = btcPct,
         ethDominance = ethPct,
-        volume24h = totalVolume ?: 0.0,
+        volume24h = requireNotNull(totalVolume) { "CoinLore global without total_volume" },
         capChange24hPct = mcapChange.asDouble(),
     )
 }

@@ -61,4 +61,15 @@ class DefiRepositoryTest {
         repo.chains()
         assertEquals(1, server.requestCount)
     }
+
+    @Test fun `protocols list is cached for 30 minutes`() = runTest {
+        repeat(2) { server.enqueueFixture("llama_protocols.json") }
+        repo.protocols()
+        clock += 5 * 60_000
+        repo.protocols()
+        assertEquals(1, server.requestCount)
+        clock += 26 * 60_000
+        repo.protocols()
+        assertEquals(2, server.requestCount)
+    }
 }

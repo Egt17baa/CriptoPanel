@@ -29,5 +29,5 @@ fun CoinMarketDto.toDomain(): CoinMarket = CoinMarket(
     change1h = change1h,
     change24h = change24h,
     change7d = change7d,
-    sparkline7d = sparkline?.price.orEmpty(),
+    sparkline7d = sparkline?.price.orEmpty().filterNotNull(),
 )

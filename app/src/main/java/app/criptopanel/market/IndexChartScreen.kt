@@ -9,9 +9,11 @@ import android.net.NetworkCapabilities
 import android.net.Uri
 import android.view.ViewGroup
 import android.webkit.CookieManager
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.horizontalScroll
@@ -38,6 +40,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
@@ -50,6 +53,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import app.criptopanel.core.network.AppError
 import app.criptopanel.core.ui.message
 import java.util.TimeZone
@@ -138,6 +144,21 @@ fun IndexChartScreen(index: MarketIndex, onBack: () -> Unit) {
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 private fun TradingViewWebView(url: String, onLoaded: () -> Unit, onLoadError: () -> Unit, modifier: Modifier) {
+    var webView by remember { mutableStateOf<WebView?>(null) }
+    // Pause the widget's timers and live data socket while the app is in the background.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, webView) {
+        val view = webView
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_PAUSE -> view?.onPause()
+                Lifecycle.Event.ON_RESUME -> view?.onResume()
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     AndroidView(
         modifier = modifier,
         factory = { context ->
@@ -155,6 +176,17 @@ private fun TradingViewWebView(url: String, onLoaded: () -> Unit, onLoadError: (
                         if (request.isForMainFrame) onLoadError()
                     }
 
+                    override fun onReceivedHttpError(view: WebView, request: WebResourceRequest, response: WebResourceResponse) {
+                        if (request.isForMainFrame && response.statusCode >= 400) onLoadError()
+                    }
+
+                    // The renderer can be killed under memory pressure; unhandled, that kills the whole app.
+                    // Showing the retry screen removes this WebView (destroyed in onRelease).
+                    override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
+                        onLoadError()
+                        return true
+                    }
+
                     // Links out of the widget (logo, attribution) open in the browser, never inside the app.
                     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                         if (!request.isForMainFrame || isWidgetUrl(request.url.toString())) return false
@@ -163,6 +195,7 @@ private fun TradingViewWebView(url: String, onLoaded: () -> Unit, onLoadError: (
                     }
                 }
                 loadUrl(url)
+                webView = this
             }
         },
         onRelease = { it.destroy() },

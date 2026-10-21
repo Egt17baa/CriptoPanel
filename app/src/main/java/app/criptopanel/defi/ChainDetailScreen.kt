@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.criptopanel.core.format.formatCompactUsd
+import app.criptopanel.core.ui.EmptyMessage
 import app.criptopanel.core.ui.LineChart
 import app.criptopanel.core.ui.StateContent
 import app.criptopanel.core.ui.message
@@ -67,7 +68,8 @@ fun ChainDetailScreen(chain: String, vm: ChainDetailViewModel, onBack: () -> Uni
                 }
             }
             Text("Protocolos en $chain", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(horizontal = 12.dp))
-            StateContent(protocols, onRefresh = vm::refresh) { list ->
+            StateContent(protocols, onRefresh = { vm.refresh(force = true) }) { list ->
+                if (list.isEmpty()) EmptyMessage("Sin protocolos registrados en esta red")
                 LazyColumn {
                     itemsIndexed(list, key = { _, item -> item.first.slug }) { i, (protocol, tvl) ->
                         ProtocolRow(i + 1, protocol, tvl)

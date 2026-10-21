@@ -64,7 +64,7 @@ fun CoinDetailScreen(vm: CoinDetailViewModel, onBack: () -> Unit) {
             )
         },
     ) { padding ->
-        StateContent(state, onRefresh = vm::refresh, modifier = Modifier.padding(padding)) { coin ->
+        StateContent(state, onRefresh = { vm.refresh(force = true) }, modifier = Modifier.padding(padding)) { coin ->
             LazyColumn(contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 item { Header(coin) }
                 item {

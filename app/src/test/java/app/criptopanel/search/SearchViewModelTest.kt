@@ -39,4 +39,26 @@ class SearchViewModelTest {
         assertEquals(6, results.first().rank)
         assertNull(results[1].thumbUrl)
     }
+
+    @Test fun `shows loading while searching`() = runTest(main.dispatcher) {
+        fake.searchDelayMs = 1_000
+        vm.onQuery("sol")
+        advanceTimeBy(450)
+        assertEquals(true, vm.results.value.loading)
+        advanceUntilIdle()
+        assertEquals(false, vm.results.value.loading)
+        assertEquals("SOL", vm.results.value.data!!.first().symbol)
+    }
+
+    @Test fun `retry repeats the same query after an error`() = runTest(main.dispatcher) {
+        fake.failWith(java.io.IOException())
+        vm.onQuery("sol")
+        advanceUntilIdle()
+        assertEquals(app.criptopanel.core.network.AppError.Offline, vm.results.value.error)
+        fake.failWith(null)
+        vm.retry()
+        advanceUntilIdle()
+        assertEquals(listOf("sol", "sol"), fake.queries)
+        assertEquals("SOL", vm.results.value.data!!.first().symbol)
+    }
 }

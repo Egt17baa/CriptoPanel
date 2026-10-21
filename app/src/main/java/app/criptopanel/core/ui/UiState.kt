@@ -13,7 +13,8 @@ data class UiState<T>(
 fun <T> UiState<T>.loading(): UiState<T> = copy(loading = true)
 
 fun <T> UiState<T>.with(outcome: Outcome<T>): UiState<T> = when (outcome) {
-    is Outcome.Ok -> UiState(data = outcome.value)
+    // The same instance means a cache hit, not fresh data: keep any error the user is seeing.
+    is Outcome.Ok -> if (outcome.value === data) copy(loading = false) else UiState(data = outcome.value)
     is Outcome.Err -> copy(loading = false, error = outcome.error)
 }
 

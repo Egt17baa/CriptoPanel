@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import app.criptopanel.core.ui.UiState
 import app.criptopanel.core.ui.loading
 import app.criptopanel.core.ui.with
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,9 +16,12 @@ class OverviewViewModel(private val repo: MarketRepository) : ViewModel() {
     private val _state = MutableStateFlow(UiState<GlobalMetrics>())
     val state: StateFlow<UiState<GlobalMetrics>> = _state.asStateFlow()
 
+    private var refreshJob: Job? = null
+
     fun refresh(force: Boolean = false) {
         _state.update { it.loading() }
-        viewModelScope.launch {
+        refreshJob?.cancel()
+        refreshJob = viewModelScope.launch {
             val outcome = repo.global(force)
             _state.update { it.with(outcome) }
         }

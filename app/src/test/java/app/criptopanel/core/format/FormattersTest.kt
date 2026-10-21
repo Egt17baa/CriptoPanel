@@ -35,4 +35,10 @@ class FormattersTest {
         assertEquals("19,80 M", formatCompact(1.98e7, es))
         assertEquals("—", formatCompact(null, es))
     }
+
+    @Test fun `suffix chosen after rounding`() {
+        assertEquals("1,00 M", formatCompact(999_999.0, es))
+        assertEquals("999,99 K", formatCompact(999_994.0, es))
+        assertEquals("1,00 T", formatCompact(999_999_999_999.0, es))
+    }
 }

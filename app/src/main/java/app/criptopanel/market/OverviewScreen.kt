@@ -1,6 +1,5 @@
 package app.criptopanel.market
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -80,11 +79,11 @@ fun OverviewScreen(vm: OverviewViewModel, onSearch: () -> Unit, onIndex: (Market
 @Composable
 private fun MetricCard(metric: Metric, onIndex: (MarketIndex) -> Unit) {
     val index = metric.index
-    val clickable = if (index != null) Modifier.clickable { onIndex(index) } else Modifier
-    Card(Modifier.then(clickable)) {
+    val content: @Composable () -> Unit = {
         Column(Modifier.padding(12.dp)) {
             Text(if (index != null) "${metric.label} ›" else metric.label, style = MaterialTheme.typography.labelMedium)
             Text(metric.value, style = MaterialTheme.typography.titleMedium, color = metric.color)
         }
     }
+    if (index != null) Card(onClick = { onIndex(index) }) { content() } else Card { content() }
 }

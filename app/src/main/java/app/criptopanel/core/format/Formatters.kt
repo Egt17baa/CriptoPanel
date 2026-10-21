@@ -9,6 +9,8 @@ import kotlin.math.abs
 
 private const val DASH = "—"
 
+private val compactSteps = listOf(1.0 to "", 1e3 to " K", 1e6 to " M", 1e9 to " B", 1e12 to " T")
+
 private fun twoDecimals(locale: Locale, pattern: String = "#,##0.00") =
     DecimalFormat(pattern, DecimalFormatSymbols.getInstance(locale))
 
@@ -25,13 +27,10 @@ fun formatUsd(value: Double?, locale: Locale = Locale.getDefault()): String {
 /** Large amounts with K/M/B/T suffixes and no currency, e.g. "19,80 M". */
 fun formatCompact(value: Double?, locale: Locale = Locale.getDefault()): String {
     if (value == null || value.isNaN()) return DASH
-    val (divisor, suffix) = when {
-        abs(value) >= 1e12 -> 1e12 to " T"
-        abs(value) >= 1e9 -> 1e9 to " B"
-        abs(value) >= 1e6 -> 1e6 to " M"
-        abs(value) >= 1e3 -> 1e3 to " K"
-        else -> 1.0 to ""
-    }
+    // Suffix by magnitude, then one step up if rounding reaches 1000 (999 999 reads "1,00 M", not "1.000,00 K").
+    var i = compactSteps.indexOfLast { abs(value) >= it.first }.coerceAtLeast(0)
+    while (i < compactSteps.lastIndex && Math.round(abs(value) / compactSteps[i].first * 100) / 100.0 >= 1000) i++
+    val (divisor, suffix) = compactSteps[i]
     return "${twoDecimals(locale).format(value / divisor)}$suffix"
 }
 

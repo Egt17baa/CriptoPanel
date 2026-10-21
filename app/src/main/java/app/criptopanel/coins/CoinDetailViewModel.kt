@@ -23,17 +23,20 @@ class CoinDetailViewModel(private val id: String, private val repo: MarketReposi
     val chart: StateFlow<UiState<List<Double>>> = _chart.asStateFlow()
     val range: StateFlow<ChartRange> = _range.asStateFlow()
 
+    private var coinJob: Job? = null
+
     init {
         refresh()
     }
 
-    fun refresh() {
+    fun refresh(force: Boolean = false) {
         _state.update { it.loading() }
-        viewModelScope.launch {
+        coinJob?.cancel()
+        coinJob = viewModelScope.launch {
             val outcome = repo.coin(id)
             _state.update { it.with(outcome) }
         }
-        loadChart()
+        loadChart(force)
     }
 
     fun setRange(r: ChartRange) {
@@ -42,12 +45,12 @@ class CoinDetailViewModel(private val id: String, private val repo: MarketReposi
         loadChart()
     }
 
-    private fun loadChart() {
+    private fun loadChart(force: Boolean = false) {
         chartJob?.cancel()
         _chart.update { it.loading() }
         val r = _range.value
         chartJob = viewModelScope.launch {
-            val outcome = repo.chart(id, r)
+            val outcome = repo.chart(id, r, force)
             _chart.update { it.with(outcome) }
         }
     }

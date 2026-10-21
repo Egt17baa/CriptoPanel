@@ -6,6 +6,7 @@ import app.criptopanel.core.ui.UiState
 import app.criptopanel.core.ui.loading
 import app.criptopanel.core.ui.with
 import app.criptopanel.market.MarketRepository
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -32,9 +33,12 @@ class TopCoinsViewModel(private val repo: MarketRepository) : ViewModel() {
 
     fun setSort(s: SortKey) { _sort.value = s }
 
+    private var refreshJob: Job? = null
+
     fun refresh(force: Boolean = false) {
         loaded.update { it.loading() }
-        viewModelScope.launch {
+        refreshJob?.cancel()
+        refreshJob = viewModelScope.launch {
             val outcome = repo.topCoins(force)
             loaded.update { it.with(outcome) }
         }

@@ -8,6 +8,7 @@ class FakeCoinGeckoApi : CoinGeckoApi {
     var calls = 0
     val chartDays = mutableListOf<String>()
     val queries = mutableListOf<String>()
+    var searchDelayMs = 0L
 
     fun failWith(t: Throwable?) { failure = t }
 
@@ -27,5 +28,9 @@ class FakeCoinGeckoApi : CoinGeckoApi {
     override suspend fun marketChart(id: String, days: String, vs: String): MarketChartDto =
         serve { chartDays += days; decodeFixture("cg_market_chart.json") }
 
-    override suspend fun search(q: String): SearchDto = serve { queries += q; decodeFixture("cg_search.json") }
+    override suspend fun search(q: String): SearchDto {
+        queries += q
+        kotlinx.coroutines.delay(searchDelayMs)
+        return serve { decodeFixture("cg_search.json") }
+    }
 }
