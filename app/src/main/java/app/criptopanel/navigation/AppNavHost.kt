@@ -23,6 +23,8 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import app.criptopanel.AppContainer
 import app.criptopanel.CriptoPanelApp
+import app.criptopanel.coins.TopCoinsScreen
+import app.criptopanel.coins.TopCoinsViewModel
 import app.criptopanel.market.OverviewScreen
 import app.criptopanel.market.OverviewViewModel
 
@@ -71,7 +73,12 @@ fun AppNavHost() {
                     onSearch = { nav.navigate("search") },
                 )
             }
-            composable("top") { Text("Próximamente") }
+            composable("top") {
+                TopCoinsScreen(
+                    vm = viewModel { TopCoinsViewModel(container.marketRepository) },
+                    onCoin = { id -> nav.navigate("coin/$id") },
+                )
+            }
             composable("defi") { Text("Próximamente") }
         }
     }
