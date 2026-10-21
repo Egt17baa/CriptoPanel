@@ -15,8 +15,9 @@ internal class TtlCache<T>(private val now: () -> Long) {
     suspend fun get(force: Boolean, fetch: suspend () -> T): Outcome<T> = mutex.withLock {
         val hit = cached
         if (!force && hit != null && now() - hit.at < CACHE_TTL_MS) return Outcome.Ok(hit.value)
+        val startedAt = now()
         val result = apiCall { fetch() }
-        if (result is Outcome.Ok) cached = Cached(result.value, now())
+        if (result is Outcome.Ok) cached = Cached(result.value, startedAt)
         result
     }
 }

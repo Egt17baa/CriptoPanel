@@ -49,12 +49,12 @@ data class ImageDto(val thumb: String? = null, val small: String? = null, val la
 
 @Serializable
 data class MarketDataDto(
-    @SerialName("current_price") val currentPrice: Map<String, Double> = emptyMap(),
-    @SerialName("market_cap") val marketCap: Map<String, Double> = emptyMap(),
-    @SerialName("total_volume") val totalVolume: Map<String, Double> = emptyMap(),
-    @SerialName("high_24h") val high24h: Map<String, Double> = emptyMap(),
-    @SerialName("low_24h") val low24h: Map<String, Double> = emptyMap(),
-    val ath: Map<String, Double> = emptyMap(),
+    @SerialName("current_price") val currentPrice: Map<String, Double?> = emptyMap(),
+    @SerialName("market_cap") val marketCap: Map<String, Double?> = emptyMap(),
+    @SerialName("total_volume") val totalVolume: Map<String, Double?> = emptyMap(),
+    @SerialName("high_24h") val high24h: Map<String, Double?> = emptyMap(),
+    @SerialName("low_24h") val low24h: Map<String, Double?> = emptyMap(),
+    val ath: Map<String, Double?> = emptyMap(),
     @SerialName("circulating_supply") val circulatingSupply: Double? = null,
     @SerialName("total_supply") val totalSupply: Double? = null,
     @SerialName("max_supply") val maxSupply: Double? = null,

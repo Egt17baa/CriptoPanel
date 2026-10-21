@@ -1,6 +1,8 @@
 package app.criptopanel.core.ui
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -47,9 +49,11 @@ fun <T> StateContent(
         onRefresh = onRefresh,
         modifier = modifier.fillMaxSize(),
     ) {
-        Column(Modifier.fillMaxSize()) {
+        val data = state.data
+        // Without data nothing below scrolls, so make the column scrollable for the pull gesture to fire.
+        val scroll = if (data == null) Modifier.verticalScroll(rememberScrollState()) else Modifier
+        Column(Modifier.fillMaxSize().then(scroll)) {
             state.error?.let { ErrorBanner(it) }
-            val data = state.data
             when {
                 data != null -> content(data)
                 state.loading -> LoadingBox()

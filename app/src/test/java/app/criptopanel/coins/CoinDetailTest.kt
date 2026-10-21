@@ -3,7 +3,9 @@ package app.criptopanel.coins
 import app.criptopanel.MainDispatcherRule
 import app.criptopanel.api
 import app.criptopanel.core.network.Outcome
+import app.criptopanel.core.network.appJson
 import app.criptopanel.enqueueFixture
+import app.criptopanel.market.CoinDetailDto
 import app.criptopanel.market.FakeCoinGeckoApi
 import app.criptopanel.market.MarketRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -13,6 +15,7 @@ import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -56,5 +59,12 @@ class CoinDetailTest {
         assertEquals(ChartRange.Y1, vm.range.value)
         assertEquals(3, vm.chart.value.data!!.size)
         assertEquals(listOf("7", "365"), fake.chartDays)
+    }
+
+    @Test fun `null currency values parse`() {
+        val json = """{"id":"x","symbol":"x","name":"X","market_data":{"current_price":{"usd":1.5},"high_24h":{"usd":null}}}"""
+        val d = appJson.decodeFromString<CoinDetailDto>(json).toDomain()
+        assertEquals(1.5, d.price!!, 1e-9)
+        assertNull(d.high24h)
     }
 }

@@ -21,8 +21,19 @@ data class DefiOverview(
 )
 
 /** Protocols active on [chain], paired with their TVL on that chain, largest first. */
-fun protocolsOnChain(protocols: List<Protocol>, chain: String): List<Pair<Protocol, Double>> =
-    protocols.mapNotNull { p -> p.chainTvls[chain]?.let { p to it } }.sortedByDescending { it.second }
+fun protocolsOnChain(protocols: List<Protocol>, chain: String): List<Pair<Protocol, Double>> {
+    val names = listOfNotNull(chain, legacyChainNames[chain])
+    return protocols
+        .mapNotNull { p -> names.firstNotNullOfOrNull { p.chainTvls[it] }?.let { p to it } }
+        .sortedByDescending { it.second }
+}
+
+/** /v2/chains display names that /protocols may still report under an older name. */
+private val legacyChainNames = mapOf(
+    "BSC" to "Binance",
+    "OP Mainnet" to "Optimism",
+    "Avalanche" to "Avax",
+)
 
 class DefiViewModel(private val repo: DefiRepository) : ViewModel() {
     private val _state = MutableStateFlow(UiState<DefiOverview>())

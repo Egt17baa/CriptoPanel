@@ -56,4 +56,9 @@ class DefiViewModelTest {
         assertEquals(2, vm.history.value.data!!.size)
         assertEquals(listOf("lido" to 5.0e8), vm.protocols.value.data!!.map { it.first.slug to it.second })
     }
+
+    @Test fun `protocols on chain match legacy chain names`() {
+        val bnb = Protocol("pancakeswap", "PancakeSwap", null, "Dexs", 3.0e9, null, listOf("Binance"), mapOf("Binance" to 3.0e9))
+        assertEquals(listOf("pancakeswap" to 3.0e9), protocolsOnChain(listOf(bnb), "BSC").map { it.first.slug to it.second })
+    }
 }

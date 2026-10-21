@@ -40,7 +40,6 @@ fun SearchScreen(vm: SearchViewModel, onCoin: (String) -> Unit, onBack: () -> Un
     val query by vm.query.collectAsStateWithLifecycle()
     val results by vm.results.collectAsStateWithLifecycle()
     val focus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { focus.requestFocus() }
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
@@ -60,6 +59,7 @@ fun SearchScreen(vm: SearchViewModel, onCoin: (String) -> Unit, onBack: () -> Un
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth().padding(12.dp).focusRequester(focus),
             )
+            LaunchedEffect(Unit) { focus.requestFocus() }
             results.error?.let { ErrorBanner(it) }
             LazyColumn {
                 items(results.data.orEmpty(), key = { it.id }) { coin ->

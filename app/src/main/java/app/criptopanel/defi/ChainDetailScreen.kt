@@ -53,6 +53,7 @@ fun ChainDetailScreen(chain: String, vm: ChainDetailViewModel, onBack: () -> Uni
                 Text(formatCompactUsd(history.data?.lastOrNull()?.tvl), style = MaterialTheme.typography.headlineSmall)
                 Box(Modifier.fillMaxWidth().height(160.dp), contentAlignment = Alignment.Center) {
                     val points = history.data
+                    val error = history.error
                     when {
                         points != null -> LineChart(
                             points = points.takeLast(365).map { it.tvl },
@@ -61,7 +62,7 @@ fun ChainDetailScreen(chain: String, vm: ChainDetailViewModel, onBack: () -> Uni
                             fill = true,
                         )
                         history.loading -> CircularProgressIndicator()
-                        history.error != null -> Text(history.error.message())
+                        error != null -> Text(error.message())
                     }
                 }
             }
