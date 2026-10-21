@@ -29,6 +29,8 @@ import app.criptopanel.coins.TopCoinsScreen
 import app.criptopanel.coins.TopCoinsViewModel
 import app.criptopanel.market.OverviewScreen
 import app.criptopanel.market.OverviewViewModel
+import app.criptopanel.search.SearchScreen
+import app.criptopanel.search.SearchViewModel
 
 private data class Tab(val route: String, val label: String, val icon: ImageVector)
 
@@ -85,6 +87,13 @@ fun AppNavHost() {
                 val id = entry.arguments?.getString("id").orEmpty()
                 CoinDetailScreen(
                     vm = viewModel(key = "coin-$id") { CoinDetailViewModel(id, container.marketRepository) },
+                    onBack = { nav.popBackStack() },
+                )
+            }
+            composable("search") {
+                SearchScreen(
+                    vm = viewModel { SearchViewModel(container.marketRepository) },
+                    onCoin = { id -> nav.navigate("coin/$id") },
                     onBack = { nav.popBackStack() },
                 )
             }

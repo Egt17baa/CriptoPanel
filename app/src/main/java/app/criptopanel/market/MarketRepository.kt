@@ -6,6 +6,8 @@ import app.criptopanel.coins.CoinMarket
 import app.criptopanel.coins.toPrices
 import app.criptopanel.coins.toDomain
 import app.criptopanel.core.network.Outcome
+import app.criptopanel.search.SearchCoin
+import app.criptopanel.search.toDomain
 import app.criptopanel.core.network.apiCall
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -47,4 +49,6 @@ class MarketRepository(
     suspend fun chart(id: String, range: ChartRange): Outcome<List<Double>> =
         synchronized(chartCaches) { chartCaches.getOrPut(id to range) { TtlCache(now) } }
             .get(force = false) { api.marketChart(id, range.days).toPrices() }
+
+    suspend fun search(q: String): Outcome<List<SearchCoin>> = apiCall { api.search(q).coins.map { it.toDomain() } }
 }

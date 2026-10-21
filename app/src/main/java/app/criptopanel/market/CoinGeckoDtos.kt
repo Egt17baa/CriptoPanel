@@ -63,3 +63,15 @@ data class MarketDataDto(
 /** Each entry is [timestamp ms, value]. */
 @Serializable
 data class MarketChartDto(val prices: List<List<Double>> = emptyList())
+
+@Serializable
+data class SearchDto(val coins: List<SearchCoinDto> = emptyList())
+
+@Serializable
+data class SearchCoinDto(
+    val id: String,
+    val name: String = "",
+    val symbol: String = "",
+    val thumb: String? = null,
+    @SerialName("market_cap_rank") val marketCapRank: Int? = null,
+)

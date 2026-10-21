@@ -1,0 +1,13 @@
+{
+  "coins": [
+    { "id": "solana", "name": "Solana", "api_symbol": "solana", "symbol": "SOL", "market_cap_rank": 6,
+      "thumb": "https://coin-images.coingecko.com/coins/images/4128/thumb/solana.png",
+      "large": "https://coin-images.coingecko.com/coins/images/4128/large/solana.png" },
+    { "id": "solana-name-service", "name": "Solana Name Service", "api_symbol": "solana-name-service", "symbol": "SNS", "market_cap_rank": null,
+      "thumb": null, "large": null }
+  ],
+  "exchanges": [],
+  "icos": [],
+  "categories": [],
+  "nfts": []
+}

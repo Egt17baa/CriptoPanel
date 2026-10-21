@@ -33,4 +33,7 @@ interface CoinGeckoApi {
         @Query("days") days: String,
         @Query("vs_currency") vs: String = "usd",
     ): MarketChartDto
+
+    @GET("search")
+    suspend fun search(@Query("query") q: String): SearchDto
 }
