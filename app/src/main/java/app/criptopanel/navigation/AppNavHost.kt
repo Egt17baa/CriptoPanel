@@ -1,5 +1,6 @@
 package app.criptopanel.navigation
 
+import android.net.Uri
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
@@ -27,6 +28,10 @@ import app.criptopanel.coins.CoinDetailScreen
 import app.criptopanel.coins.CoinDetailViewModel
 import app.criptopanel.coins.TopCoinsScreen
 import app.criptopanel.coins.TopCoinsViewModel
+import app.criptopanel.defi.ChainDetailScreen
+import app.criptopanel.defi.ChainDetailViewModel
+import app.criptopanel.defi.DefiScreen
+import app.criptopanel.defi.DefiViewModel
 import app.criptopanel.market.OverviewScreen
 import app.criptopanel.market.OverviewViewModel
 import app.criptopanel.search.SearchScreen
@@ -97,7 +102,20 @@ fun AppNavHost() {
                     onBack = { nav.popBackStack() },
                 )
             }
-            composable("defi") { Text("Próximamente") }
+            composable("defi") {
+                DefiScreen(
+                    vm = viewModel { DefiViewModel(container.defiRepository) },
+                    onChain = { name -> nav.navigate("chain/${Uri.encode(name)}") },
+                )
+            }
+            composable("chain/{name}") { entry ->
+                val name = entry.arguments?.getString("name").orEmpty()
+                ChainDetailScreen(
+                    chain = name,
+                    vm = viewModel(key = "chain-$name") { ChainDetailViewModel(name, container.defiRepository) },
+                    onBack = { nav.popBackStack() },
+                )
+            }
         }
     }
 }
