@@ -1,6 +1,11 @@
 package app.criptopanel.market
 
 import android.annotation.SuppressLint
+import android.content.ActivityNotFoundException
+import android.content.Context
+import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
@@ -34,6 +39,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import app.criptopanel.core.network.AppError
@@ -46,10 +52,11 @@ import java.util.TimeZone
 fun IndexChartScreen(index: MarketIndex, onBack: () -> Unit) {
     var interval by rememberSaveable { mutableStateOf(ChartInterval.DEFAULT) }
     var reloads by remember { mutableIntStateOf(0) }
-    val failed = remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val failed = remember { mutableStateOf(!context.isOnline()) }
     val dark = isSystemInDarkTheme()
     val html = remember(index, interval, dark) {
-        tradingViewHtml(index, interval, dark, TimeZone.getDefault().id)
+        tradingViewHtml(index, interval, dark, tradingViewTimezone(TimeZone.getDefault()))
     }
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
@@ -72,7 +79,7 @@ fun IndexChartScreen(index: MarketIndex, onBack: () -> Unit) {
                         selected = i == interval,
                         onClick = {
                             interval = i
-                            failed.value = false
+                            failed.value = !context.isOnline()
                         },
                         label = { Text(i.label) },
                     )
@@ -87,7 +94,7 @@ fun IndexChartScreen(index: MarketIndex, onBack: () -> Unit) {
                     Text(AppError.Offline.message())
                     Button(
                         onClick = {
-                            failed.value = false
+                            failed.value = !context.isOnline()
                             reloads++
                         },
                         modifier = Modifier.padding(top = 12.dp),
@@ -113,8 +120,17 @@ private fun TradingViewWebView(html: String, onLoadError: () -> Unit, modifier: 
                 settings.domStorageEnabled = true
                 webViewClient = object : WebViewClient() {
                     override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
-                        // The page itself is inline; failing to fetch the widget script means no connection.
-                        if (request.isForMainFrame || request.url.toString() == TRADINGVIEW_EMBED_SCRIPT) onLoadError()
+                        if (isWidgetLoadFailure(request.url.toString(), request.isForMainFrame)) onLoadError()
+                    }
+
+                    // Links out of the widget (logo, attribution) open in the browser, never inside the app.
+                    override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+                        if (!request.isForMainFrame) return false
+                        try {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, request.url).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                        } catch (_: ActivityNotFoundException) {
+                        }
+                        return true
                     }
                 }
                 loadDataWithBaseURL(TRADINGVIEW_BASE_URL, html, "text/html", "utf-8", null)
@@ -122,4 +138,10 @@ private fun TradingViewWebView(html: String, onLoadError: () -> Unit, modifier: 
         },
         onRelease = { it.destroy() },
     )
+}
+
+private fun Context.isOnline(): Boolean {
+    val cm = getSystemService(ConnectivityManager::class.java) ?: return true
+    val caps = cm.getNetworkCapabilities(cm.activeNetwork) ?: return false
+    return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
 }

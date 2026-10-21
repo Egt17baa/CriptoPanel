@@ -6,8 +6,10 @@ import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.TimeZone
 
 class IndexChartTest {
     @Test fun `indices map to TradingView CRYPTOCAP symbols`() = assertEquals(
@@ -43,4 +45,38 @@ class IndexChartTest {
 
     @Test fun `light theme`() =
         assertEquals("light", widgetConfig(tradingViewHtml(MarketIndex.BTC_D, ChartInterval.D1, dark = false, timezone = "UTC"))["theme"]!!.jsonPrimitive.content)
+
+    private val now = 1_792_540_800_000L
+
+    @Test fun `supported timezone passes through`() =
+        assertEquals("Europe/Madrid", tradingViewTimezone(TimeZone.getTimeZone("Europe/Madrid"), now))
+
+    @Test fun `unsupported zone maps to one with the same clock all year`() {
+        val canary = TimeZone.getTimeZone("Atlantic/Canary")
+        val mapped = TimeZone.getTimeZone(tradingViewTimezone(canary, now))
+        assertTrue(mapped.id, mapped.id in TRADINGVIEW_TIMEZONES)
+        val january = 1_799_971_200_000L
+        val july = 1_815_609_600_000L
+        listOf(now, january, july).forEach { assertEquals(mapped.id, canary.getOffset(it), mapped.getOffset(it)) }
+    }
+
+    @Test fun `unsupported zone without twin maps to the same current offset`() {
+        val montevideo = TimeZone.getTimeZone("America/Montevideo")
+        val mapped = tradingViewTimezone(montevideo, now)
+        assertTrue(mapped, mapped in TRADINGVIEW_TIMEZONES)
+        assertEquals(montevideo.getOffset(now), TimeZone.getTimeZone(mapped).getOffset(now))
+    }
+
+    @Test fun `gmt maps to utc`() {
+        assertEquals("Etc/UTC", tradingViewTimezone(TimeZone.getTimeZone("GMT"), now))
+        assertEquals("Etc/UTC", tradingViewTimezone(TimeZone.getTimeZone("UTC"), now))
+    }
+
+    @Test fun `widget load failures`() {
+        assertTrue(isWidgetLoadFailure(TRADINGVIEW_EMBED_SCRIPT, isMainFrame = false))
+        assertTrue(isWidgetLoadFailure("https://www.tradingview-widget.com/embed-widget/advanced-chart/?locale=es", isMainFrame = false))
+        assertTrue(isWidgetLoadFailure("about:blank", isMainFrame = true))
+        assertFalse(isWidgetLoadFailure("https://www.tradingview-widget.com/static/bundles/chart.js", isMainFrame = false))
+        assertFalse(isWidgetLoadFailure("https://telemetry.tradingview.com/widget/report", isMainFrame = false))
+    }
 }

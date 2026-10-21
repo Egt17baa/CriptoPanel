@@ -55,6 +55,6 @@ gradle -p jvm-check test
 
 ## Estado de verificación
 
-- `./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug`: compila, 50 tests pasan, lint sin errores.
+- `./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug`: compila, 55 tests pasan, lint sin errores.
 - Las respuestas reales de CoinGecko y DefiLlama se han comprobado contra los modelos de la app.
 - Falta probarla en un móvil o emulador: instala el APK con `./gradlew installDebug` y revisa cada pantalla.

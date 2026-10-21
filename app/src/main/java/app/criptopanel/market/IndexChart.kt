@@ -2,6 +2,7 @@ package app.criptopanel.market
 
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import java.util.TimeZone
 
 /** Market-wide indices charted with TradingView's CRYPTOCAP data. */
 enum class MarketIndex(val tvSymbol: String, val title: String) {
@@ -64,3 +65,46 @@ fun tradingViewHtml(index: MarketIndex, interval: ChartInterval, dark: Boolean, 
         </html>
     """.trimIndent()
 }
+
+/** Time zone IDs accepted by TradingView widgets; any other ID silently falls back to a wrong zone. */
+val TRADINGVIEW_TIMEZONES = listOf(
+    "Etc/UTC", "Africa/Cairo", "Africa/Casablanca", "Africa/Johannesburg", "Africa/Lagos", "Africa/Nairobi",
+    "Africa/Tunis", "America/Anchorage", "America/Argentina/Buenos_Aires", "America/Bogota", "America/Caracas",
+    "America/Chicago", "America/El_Salvador", "America/Juneau", "America/Lima", "America/Los_Angeles",
+    "America/Mexico_City", "America/New_York", "America/Phoenix", "America/Santiago", "America/Sao_Paulo",
+    "America/Toronto", "America/Vancouver", "Asia/Almaty", "Asia/Ashkhabad", "Asia/Bahrain", "Asia/Bangkok",
+    "Asia/Chongqing", "Asia/Colombo", "Asia/Dhaka", "Asia/Dubai", "Asia/Ho_Chi_Minh", "Asia/Hong_Kong",
+    "Asia/Jakarta", "Asia/Jerusalem", "Asia/Karachi", "Asia/Kathmandu", "Asia/Kolkata", "Asia/Kuwait",
+    "Asia/Manila", "Asia/Muscat", "Asia/Nicosia", "Asia/Qatar", "Asia/Riyadh", "Asia/Seoul", "Asia/Shanghai",
+    "Asia/Singapore", "Asia/Taipei", "Asia/Tehran", "Asia/Tokyo", "Asia/Yangon", "Atlantic/Reykjavik",
+    "Australia/Adelaide", "Australia/Brisbane", "Australia/Perth", "Australia/Sydney", "Europe/Amsterdam",
+    "Europe/Athens", "Europe/Belgrade", "Europe/Berlin", "Europe/Bratislava", "Europe/Brussels", "Europe/Bucharest",
+    "Europe/Budapest", "Europe/Copenhagen", "Europe/Dublin", "Europe/Helsinki", "Europe/Istanbul", "Europe/Lisbon",
+    "Europe/London", "Europe/Luxembourg", "Europe/Madrid", "Europe/Malta", "Europe/Moscow", "Europe/Oslo",
+    "Europe/Paris", "Europe/Prague", "Europe/Riga", "Europe/Rome", "Europe/Stockholm", "Europe/Tallinn",
+    "Europe/Vienna", "Europe/Vilnius", "Europe/Warsaw", "Europe/Zurich", "Pacific/Auckland", "Pacific/Chatham",
+    "Pacific/Fakaofo", "Pacific/Honolulu", "Pacific/Norfolk", "US/Mountain",
+)
+
+/**
+ * The device zone if TradingView supports it; else a supported zone showing the same clock all year
+ * (sampled twice a month), then one with the same offset now, then UTC.
+ */
+fun tradingViewTimezone(zone: TimeZone, nowMs: Long = System.currentTimeMillis()): String {
+    if (zone.id in TRADINGVIEW_TIMEZONES) return zone.id
+    val zones = TRADINGVIEW_TIMEZONES.map { TimeZone.getTimeZone(it) }
+    val samples = (0 until 24).map { nowMs + it * 15L * 24 * 3_600_000 }
+    return (zones.firstOrNull { tz -> samples.all { tz.getOffset(it) == zone.getOffset(it) } }
+        ?: zones.firstOrNull { it.getOffset(nowMs) == zone.getOffset(nowMs) })
+        ?.id ?: "Etc/UTC"
+}
+
+private val widgetDocumentPrefixes = listOf(
+    TRADINGVIEW_EMBED_SCRIPT,
+    "https://www.tradingview-widget.com/embed-widget/",
+    "https://s.tradingview.com/embed-widget/",
+)
+
+/** True when a failed request means the chart cannot show: the page, the embed script or the widget's iframe document. */
+fun isWidgetLoadFailure(url: String, isMainFrame: Boolean): Boolean =
+    isMainFrame || widgetDocumentPrefixes.any { url.startsWith(it) }
