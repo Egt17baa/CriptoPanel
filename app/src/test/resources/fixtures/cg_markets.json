@@ -1,0 +1,35 @@
+[
+  {
+    "id": "bitcoin", "symbol": "btc", "name": "Bitcoin",
+    "image": "https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png",
+    "current_price": 98123.45, "market_cap": 1695000000000, "market_cap_rank": 1,
+    "total_volume": 45000000000, "high_24h": 99000, "low_24h": 96500,
+    "price_change_percentage_24h": 1.2, "circulating_supply": 19800000, "total_supply": 21000000,
+    "max_supply": 21000000, "ath": 126000,
+    "sparkline_in_7d": { "price": [95000.0, 96000.0, 98123.45] },
+    "price_change_percentage_1h_in_currency": 0.1,
+    "price_change_percentage_24h_in_currency": 1.2,
+    "price_change_percentage_7d_in_currency": 3.3
+  },
+  {
+    "id": "ethereum", "symbol": "eth", "name": "Ethereum",
+    "image": "https://coin-images.coingecko.com/coins/images/279/large/ethereum.png",
+    "current_price": 3000.5, "market_cap": 360000000000, "market_cap_rank": 2,
+    "total_volume": 20000000000, "high_24h": 3050, "low_24h": 2900,
+    "price_change_percentage_24h": 2.5, "circulating_supply": 120000000, "total_supply": 120000000,
+    "max_supply": null, "ath": 4950,
+    "sparkline_in_7d": { "price": [3100.0, 3000.5] },
+    "price_change_percentage_1h_in_currency": -0.2,
+    "price_change_percentage_24h_in_currency": 2.5,
+    "price_change_percentage_7d_in_currency": -3.1
+  },
+  {
+    "id": "nullcoin", "symbol": "nul", "name": "Nullcoin",
+    "image": null,
+    "current_price": 0.000012341, "market_cap": null, "market_cap_rank": null,
+    "total_volume": null, "high_24h": null, "low_24h": null,
+    "price_change_percentage_24h": null, "circulating_supply": null, "total_supply": null,
+    "max_supply": null, "ath": null,
+    "price_change_percentage_24h_in_currency": null
+  }
+]
