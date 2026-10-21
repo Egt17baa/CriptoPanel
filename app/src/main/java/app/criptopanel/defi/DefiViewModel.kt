@@ -32,7 +32,6 @@ fun protocolsOnChain(protocols: List<Protocol>, chain: String): List<Pair<Protoc
 private val legacyChainNames = mapOf(
     "BSC" to "Binance",
     "OP Mainnet" to "Optimism",
-    "Avalanche" to "Avax",
 )
 
 class DefiViewModel(private val repo: DefiRepository) : ViewModel() {
