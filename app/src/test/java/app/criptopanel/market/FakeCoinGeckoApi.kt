@@ -6,6 +6,7 @@ import app.criptopanel.decodeFixture
 class FakeCoinGeckoApi : CoinGeckoApi {
     var failure: Throwable? = null
     var calls = 0
+    val chartDays = mutableListOf<String>()
 
     fun failWith(t: Throwable?) { failure = t }
 
@@ -20,4 +21,10 @@ class FakeCoinGeckoApi : CoinGeckoApi {
     override suspend fun markets(
         vs: String, order: String, perPage: Int, page: Int, sparkline: Boolean, changes: String,
     ): List<CoinMarketDto> = serve { decodeFixture("cg_markets.json") }
+
+    override suspend fun coin(id: String, l: Boolean, t: Boolean, c: Boolean, d: Boolean): CoinDetailDto =
+        serve { decodeFixture("cg_coin_bitcoin.json") }
+
+    override suspend fun marketChart(id: String, days: String, vs: String): MarketChartDto =
+        serve { chartDays += days; decodeFixture("cg_market_chart.json") }
 }

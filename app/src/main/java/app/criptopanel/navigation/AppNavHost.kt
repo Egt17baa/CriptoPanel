@@ -23,6 +23,8 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import app.criptopanel.AppContainer
 import app.criptopanel.CriptoPanelApp
+import app.criptopanel.coins.CoinDetailScreen
+import app.criptopanel.coins.CoinDetailViewModel
 import app.criptopanel.coins.TopCoinsScreen
 import app.criptopanel.coins.TopCoinsViewModel
 import app.criptopanel.market.OverviewScreen
@@ -77,6 +79,13 @@ fun AppNavHost() {
                 TopCoinsScreen(
                     vm = viewModel { TopCoinsViewModel(container.marketRepository) },
                     onCoin = { id -> nav.navigate("coin/$id") },
+                )
+            }
+            composable("coin/{id}") { entry ->
+                val id = entry.arguments?.getString("id").orEmpty()
+                CoinDetailScreen(
+                    vm = viewModel(key = "coin-$id") { CoinDetailViewModel(id, container.marketRepository) },
+                    onBack = { nav.popBackStack() },
                 )
             }
             composable("defi") { Text("Próximamente") }

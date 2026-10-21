@@ -1,0 +1,23 @@
+{
+  "id": "bitcoin",
+  "symbol": "btc",
+  "name": "Bitcoin",
+  "market_cap_rank": 1,
+  "image": {
+    "thumb": "https://coin-images.coingecko.com/coins/images/1/thumb/bitcoin.png",
+    "small": "https://coin-images.coingecko.com/coins/images/1/small/bitcoin.png",
+    "large": "https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png"
+  },
+  "description": { "en": "Bitcoin is the first <a href=\"https://www.coingecko.com/en/coins/bitcoin\">cryptocurrency</a>.\r\n\r\nIt was created in 2009." },
+  "market_data": {
+    "current_price": { "usd": 98123.45, "eur": 90000 },
+    "market_cap": { "usd": 1695000000000 },
+    "total_volume": { "usd": 45000000000 },
+    "high_24h": { "usd": 99000 },
+    "low_24h": { "usd": 96500 },
+    "ath": { "usd": 126000 },
+    "circulating_supply": 19800000.0,
+    "total_supply": 21000000.0,
+    "max_supply": 21000000.0
+  }
+}

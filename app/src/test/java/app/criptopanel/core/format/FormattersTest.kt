@@ -30,4 +30,9 @@ class FormattersTest {
         assertEquals("+2,35 %", formatPercent(2.345, es))
         assertEquals("-0,50 %", formatPercent(-0.5, es))
     }
+
+    @Test fun `compact without currency`() {
+        assertEquals("19,80 M", formatCompact(1.98e7, es))
+        assertEquals("—", formatCompact(null, es))
+    }
 }

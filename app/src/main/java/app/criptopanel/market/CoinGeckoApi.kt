@@ -1,6 +1,7 @@
 package app.criptopanel.market
 
 import retrofit2.http.GET
+import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface CoinGeckoApi {
@@ -16,4 +17,20 @@ interface CoinGeckoApi {
         @Query("sparkline") sparkline: Boolean = true,
         @Query("price_change_percentage") changes: String = "1h,24h,7d",
     ): List<CoinMarketDto>
+
+    @GET("coins/{id}")
+    suspend fun coin(
+        @Path("id") id: String,
+        @Query("localization") l: Boolean = false,
+        @Query("tickers") t: Boolean = false,
+        @Query("community_data") c: Boolean = false,
+        @Query("developer_data") d: Boolean = false,
+    ): CoinDetailDto
+
+    @GET("coins/{id}/market_chart")
+    suspend fun marketChart(
+        @Path("id") id: String,
+        @Query("days") days: String,
+        @Query("vs_currency") vs: String = "usd",
+    ): MarketChartDto
 }

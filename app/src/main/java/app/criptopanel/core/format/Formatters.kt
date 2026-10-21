@@ -22,8 +22,8 @@ fun formatUsd(value: Double?, locale: Locale = Locale.getDefault()): String {
     return "${rounded.toPlainString().replace('.', separator)} $"
 }
 
-/** Large USD amounts with K/M/B/T suffixes, e.g. "3,21 T $". */
-fun formatCompactUsd(value: Double?, locale: Locale = Locale.getDefault()): String {
+/** Large amounts with K/M/B/T suffixes and no currency, e.g. "19,80 M". */
+fun formatCompact(value: Double?, locale: Locale = Locale.getDefault()): String {
     if (value == null || value.isNaN()) return DASH
     val (divisor, suffix) = when {
         abs(value) >= 1e12 -> 1e12 to " T"
@@ -32,8 +32,12 @@ fun formatCompactUsd(value: Double?, locale: Locale = Locale.getDefault()): Stri
         abs(value) >= 1e3 -> 1e3 to " K"
         else -> 1.0 to ""
     }
-    return "${twoDecimals(locale).format(value / divisor)}$suffix $"
+    return "${twoDecimals(locale).format(value / divisor)}$suffix"
 }
+
+/** Large USD amounts with K/M/B/T suffixes, e.g. "3,21 T $". */
+fun formatCompactUsd(value: Double?, locale: Locale = Locale.getDefault()): String =
+    if (value == null || value.isNaN()) DASH else "${formatCompact(value, locale)} $"
 
 /** Signed percentage, e.g. "+2,35 %". */
 fun formatPercent(value: Double?, locale: Locale = Locale.getDefault()): String {

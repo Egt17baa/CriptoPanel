@@ -1,6 +1,9 @@
 package app.criptopanel.market
 
+import app.criptopanel.coins.ChartRange
+import app.criptopanel.coins.CoinDetail
 import app.criptopanel.coins.CoinMarket
+import app.criptopanel.coins.toPrices
 import app.criptopanel.coins.toDomain
 import app.criptopanel.core.network.Outcome
 import app.criptopanel.core.network.apiCall
@@ -31,10 +34,17 @@ class MarketRepository(
 ) {
     private val globalCache = TtlCache<GlobalMetrics>(now)
     private val topCache = TtlCache<List<CoinMarket>>(now)
+    private val chartCaches = mutableMapOf<Pair<String, ChartRange>, TtlCache<List<Double>>>()
 
     suspend fun global(force: Boolean = false): Outcome<GlobalMetrics> =
         globalCache.get(force) { api.global().data.toMetrics() }
 
     suspend fun topCoins(force: Boolean = false): Outcome<List<CoinMarket>> =
         topCache.get(force) { api.markets().map { it.toDomain() } }
+
+    suspend fun coin(id: String): Outcome<CoinDetail> = apiCall { api.coin(id).toDomain() }
+
+    suspend fun chart(id: String, range: ChartRange): Outcome<List<Double>> =
+        synchronized(chartCaches) { chartCaches.getOrPut(id to range) { TtlCache(now) } }
+            .get(force = false) { api.marketChart(id, range.days).toPrices() }
 }
