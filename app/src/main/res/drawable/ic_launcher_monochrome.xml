@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Single-colour layer for Android 13+ themed icons: coin with the ₿ cut out, plus the chart arrow. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="0.75"
+        android:scaleY="0.75"
+        android:translateX="13.5"
+        android:translateY="13.5">
+        <path
+            android:pathData="M21,83 L31,72 L37,77 L44,67.5 M74,37.5 L80,33"
+            android:strokeWidth="4.5"
+            android:strokeColor="#FF000000"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+        <path android:fillColor="#FF000000" android:pathData="M87,27 L84.5,40.5 L73.5,30 Z" />
+        <path
+            android:fillColor="#FF000000"
+            android:fillType="evenOdd"
+            android:pathData="M54,32 A22,22 0 1 1 53.99,32 Z M45.5,41 H57 A6,6 0 0 1 61.2,52.9 A7,7 0 0 1 58.4,67 H45.5 Z M50,44.6 H56.6 A2.4,2.4 0 0 1 56.6,49.4 H50 Z M50,56.6 H58 A3.4,3.4 0 0 1 58,63.4 H50 Z M46.7,36 H48.8 V41 H46.7 Z M52.2,36 H54.3 V41 H52.2 Z M46.7,67 H48.8 V72 H46.7 Z M52.2,67 H54.3 V72 H52.2 Z" />
+    </group>
+</vector>

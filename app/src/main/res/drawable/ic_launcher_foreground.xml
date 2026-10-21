@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Bitcoin coin whose ₿ is drawn as a candlestick (spine = body, ticks = wicks) over a rising chart. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="0.75"
+        android:scaleY="0.75"
+        android:translateX="13.5"
+        android:translateY="13.5">
+        <path
+            android:pathData="M21,83 L31,72 L37,77 L54,54 L80,33"
+            android:strokeWidth="4.5"
+            android:strokeColor="#FF22C55E"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+        <path android:fillColor="#FF22C55E" android:pathData="M87,27 L84.5,40.5 L73.5,30 Z" />
+        <path android:fillColor="#FF0B1026" android:pathData="M54,30 A24,24 0 1 1 53.99,30 Z" />
+        <path android:fillColor="#FFF7931A" android:pathData="M54,32 A22,22 0 1 1 53.99,32 Z" />
+        <path
+            android:pathData="M54,32 A22,22 0 1 1 53.99,32 Z"
+            android:strokeWidth="1.6"
+            android:strokeColor="#FFFFC163" />
+        <path
+            android:pathData="M54,36 A18,18 0 1 1 53.99,36 Z"
+            android:strokeWidth="0.9"
+            android:strokeColor="#FFD97706" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M45.5,41 H50 V67 H45.5 Z" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:fillType="evenOdd"
+            android:pathData="M50,41 H57 A6,6 0 0 1 57,53 H50 Z M50,44.6 H56.6 A2.4,2.4 0 0 1 56.6,49.4 H50 Z" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:fillType="evenOdd"
+            android:pathData="M50,53 H58.4 A7,7 0 0 1 58.4,67 H50 Z M50,56.6 H58 A3.4,3.4 0 0 1 58,63.4 H50 Z" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M46.7,36 H48.8 V41 H46.7 Z M52.2,36 H54.3 V41 H52.2 Z M46.7,67 H48.8 V72 H46.7 Z M52.2,67 H54.3 V72 H52.2 Z" />
+    </group>
+</vector>
