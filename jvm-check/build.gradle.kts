@@ -12,6 +12,7 @@ val androidOnly = listOf(
     "**/core/ui/LineChart.kt",
     "**/core/ui/AutoRefresh.kt",
     "**/core/ui/StatusViews.kt",
+    "**/core/ui/Theme.kt",
 )
 
 sourceSets {
