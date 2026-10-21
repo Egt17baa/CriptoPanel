@@ -52,7 +52,6 @@ gradle -p jvm-check test
 
 ## Estado de verificación
 
-La lógica (formatos, cálculos, APIs, caché y ViewModels) está cubierta por tests que pasan en `jvm-check`.
-Las pantallas Compose y la configuración Android se escribieron sin poder compilar (el entorno donde se
-crearon no tenía acceso al SDK de Android): el primer `./gradlew assembleDebug` en Android Studio puede
-mostrar errores menores que habrá que corregir.
+- `./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug`: compila, 46 tests pasan, lint sin errores.
+- Las respuestas reales de CoinGecko y DefiLlama se han comprobado contra los modelos de la app.
+- Falta probarla en un móvil o emulador: instala el APK con `./gradlew installDebug` y revisa cada pantalla.
