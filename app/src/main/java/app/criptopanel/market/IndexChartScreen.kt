@@ -6,6 +6,8 @@ import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.net.Uri
+import android.view.ViewGroup
 import android.webkit.CookieManager
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
@@ -16,6 +18,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
@@ -24,6 +27,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -59,9 +63,7 @@ fun IndexChartScreen(index: MarketIndex, onBack: () -> Unit) {
     val context = LocalContext.current
     val failed = remember { mutableStateOf(!context.isOnline()) }
     val dark = isSystemInDarkTheme()
-    val url = remember(index, interval, dark) {
-        tradingViewUrl(index, interval, dark, tradingViewTimezone(TimeZone.getDefault()))
-    }
+    val timezone = remember { tradingViewTimezone(TimeZone.getDefault()) }
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
@@ -69,6 +71,13 @@ fun IndexChartScreen(index: MarketIndex, onBack: () -> Unit) {
                 title = { Text(index.title) },
                 navigationIcon = {
                     IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Atrás") }
+                },
+                actions = {
+                    IconButton(onClick = {
+                        context.openInBrowser(Uri.parse(tradingViewUrl(index, interval, dark, timezone, heightDp = 600)))
+                    }) {
+                        Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Abrir en el navegador")
+                    }
                 },
             )
         },
@@ -105,9 +114,13 @@ fun IndexChartScreen(index: MarketIndex, onBack: () -> Unit) {
                     ) { Text("Reintentar") }
                 }
             } else {
-                key(url, reloads) {
-                    var loading by remember { mutableStateOf(true) }
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    val heightDp = maxHeight.value.toInt()
+                    val url = remember(index, interval, dark, heightDp) {
+                        tradingViewUrl(index, interval, dark, timezone, heightDp)
+                    }
+                    key(url, reloads) {
+                        var loading by remember { mutableStateOf(true) }
                         TradingViewWebView(
                             url = url,
                             onLoaded = { loading = false },
@@ -129,6 +142,8 @@ private fun TradingViewWebView(url: String, onLoaded: () -> Unit, onLoadError: (
         modifier = modifier,
         factory = { context ->
             WebView(context).apply {
+                // WRAP_CONTENT (the AndroidView default) can give the page a 0 px viewport height.
+                layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = true
                 CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
@@ -143,10 +158,7 @@ private fun TradingViewWebView(url: String, onLoaded: () -> Unit, onLoadError: (
                     // Links out of the widget (logo, attribution) open in the browser, never inside the app.
                     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                         if (!request.isForMainFrame || isWidgetUrl(request.url.toString())) return false
-                        try {
-                            context.startActivity(Intent(Intent.ACTION_VIEW, request.url).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                        } catch (_: ActivityNotFoundException) {
-                        }
+                        context.openInBrowser(request.url)
                         return true
                     }
                 }
@@ -161,4 +173,11 @@ private fun Context.isOnline(): Boolean {
     val cm = getSystemService(ConnectivityManager::class.java) ?: return true
     val caps = cm.getNetworkCapabilities(cm.activeNetwork) ?: return false
     return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+}
+
+private fun Context.openInBrowser(uri: Uri) {
+    try {
+        startActivity(Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    } catch (_: ActivityNotFoundException) {
+    }
 }

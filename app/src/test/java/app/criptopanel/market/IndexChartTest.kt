@@ -3,6 +3,7 @@ package app.criptopanel.market
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
@@ -33,7 +34,7 @@ class IndexChartTest {
     }
 
     @Test fun `url opens the advanced chart widget with the chosen symbol and interval`() {
-        val c = widgetConfig(tradingViewUrl(MarketIndex.TOTAL3, ChartInterval.H12, dark = true, timezone = "Europe/Madrid"))
+        val c = widgetConfig(tradingViewUrl(MarketIndex.TOTAL3, ChartInterval.H12, dark = true, timezone = "Europe/Madrid", heightDp = 640))
         assertEquals("CRYPTOCAP:TOTAL3", c["symbol"]!!.jsonPrimitive.content)
         assertEquals("720", c["interval"]!!.jsonPrimitive.content)
         assertEquals("dark", c["theme"]!!.jsonPrimitive.content)
@@ -41,17 +42,18 @@ class IndexChartTest {
         assertEquals("Europe/Madrid", c["timezone"]!!.jsonPrimitive.content)
         assertEquals("1", c["style"]!!.jsonPrimitive.content)
         assertEquals("100%", c["width"]!!.jsonPrimitive.content)
-        assertEquals("100%", c["height"]!!.jsonPrimitive.content)
+        // Fixed height: inside Android WebView a percentage height can resolve to 0 and the chart stays blank.
+        assertEquals(640, c["height"]!!.jsonPrimitive.int)
+        assertEquals(false, c["autosize"]!!.jsonPrimitive.boolean)
         assertTrue(c["hide_top_toolbar"]!!.jsonPrimitive.boolean)
-        assertTrue(c["autosize"]!!.jsonPrimitive.boolean)
         assertEquals(false, c["allow_symbol_change"]!!.jsonPrimitive.boolean)
     }
 
     @Test fun `light theme`() =
-        assertEquals("light", widgetConfig(tradingViewUrl(MarketIndex.BTC_D, ChartInterval.D1, dark = false, timezone = "UTC"))["theme"]!!.jsonPrimitive.content)
+        assertEquals("light", widgetConfig(tradingViewUrl(MarketIndex.BTC_D, ChartInterval.D1, dark = false, timezone = "UTC", heightDp = 500))["theme"]!!.jsonPrimitive.content)
 
     @Test fun `only the widget page may load inside the app`() {
-        assertTrue(isWidgetUrl(tradingViewUrl(MarketIndex.TOTAL, ChartInterval.H1, dark = false, timezone = "Etc/UTC")))
+        assertTrue(isWidgetUrl(tradingViewUrl(MarketIndex.TOTAL, ChartInterval.H1, dark = false, timezone = "Etc/UTC", heightDp = 500)))
         assertFalse(isWidgetUrl("https://www.tradingview.com/symbols/CRYPTOCAP-BTC.D/"))
     }
 

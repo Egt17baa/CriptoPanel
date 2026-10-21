@@ -29,12 +29,15 @@ enum class ChartInterval(val label: String, val tvCode: String) {
 
 private const val WIDGET_PAGE = "https://www.tradingview-widget.com/embed-widget/advanced-chart/"
 
-/** TradingView's free Advanced Chart widget page, config in the URL hash; loaded directly, no host page. */
-fun tradingViewUrl(index: MarketIndex, interval: ChartInterval, dark: Boolean, timezone: String): String {
+/**
+ * TradingView's free Advanced Chart widget page, config in the URL hash; loaded directly, no host page.
+ * The height is fixed in dp: inside Android WebView a percentage height can resolve to 0 and stay blank.
+ */
+fun tradingViewUrl(index: MarketIndex, interval: ChartInterval, dark: Boolean, timezone: String, heightDp: Int): String {
     val config = buildJsonObject {
-        put("autosize", true)
+        put("autosize", false)
         put("width", "100%")
-        put("height", "100%")
+        put("height", heightDp)
         put("symbol", index.tvSymbol)
         put("interval", interval.tvCode)
         put("timezone", timezone)
