@@ -32,6 +32,8 @@ import app.criptopanel.defi.ChainDetailScreen
 import app.criptopanel.defi.ChainDetailViewModel
 import app.criptopanel.defi.DefiScreen
 import app.criptopanel.defi.DefiViewModel
+import app.criptopanel.market.IndexChartScreen
+import app.criptopanel.market.MarketIndex
 import app.criptopanel.market.OverviewScreen
 import app.criptopanel.market.OverviewViewModel
 import app.criptopanel.search.SearchScreen
@@ -80,6 +82,14 @@ fun AppNavHost() {
                 OverviewScreen(
                     vm = viewModel { OverviewViewModel(container.marketRepository) },
                     onSearch = { nav.navigate("search") },
+                    onIndex = { index -> nav.navigate("index/${index.name}") },
+                )
+            }
+            composable("index/{name}") { entry ->
+                val name = entry.arguments?.getString("name").orEmpty()
+                IndexChartScreen(
+                    index = MarketIndex.entries.firstOrNull { it.name == name } ?: MarketIndex.TOTAL,
+                    onBack = { nav.popBackStack() },
                 )
             }
             composable("top") {

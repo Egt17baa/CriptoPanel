@@ -1,5 +1,6 @@
 package app.criptopanel.market
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -30,21 +31,26 @@ import app.criptopanel.core.ui.AutoRefresh
 import app.criptopanel.core.ui.StateContent
 import app.criptopanel.core.ui.changeColor
 
-private data class Metric(val label: String, val value: String, val color: Color = Color.Unspecified)
+private data class Metric(
+    val label: String,
+    val value: String,
+    val color: Color = Color.Unspecified,
+    val index: MarketIndex? = null,
+)
 
 private fun GlobalMetrics.cards() = listOf(
-    Metric("Capitalización total", formatCompactUsd(totalCap)),
-    Metric("TOTAL2 (sin BTC)", formatCompactUsd(total2)),
-    Metric("TOTAL3 (sin BTC ni ETH)", formatCompactUsd(total3)),
-    Metric("Dominancia BTC", "%.2f %%".format(btcDominance)),
-    Metric("Dominancia ETH", "%.2f %%".format(ethDominance)),
+    Metric(MarketIndex.TOTAL.title, formatCompactUsd(totalCap), index = MarketIndex.TOTAL),
+    Metric(MarketIndex.TOTAL2.title, formatCompactUsd(total2), index = MarketIndex.TOTAL2),
+    Metric(MarketIndex.TOTAL3.title, formatCompactUsd(total3), index = MarketIndex.TOTAL3),
+    Metric(MarketIndex.BTC_D.title, "%.2f %%".format(btcDominance), index = MarketIndex.BTC_D),
+    Metric(MarketIndex.ETH_D.title, "%.2f %%".format(ethDominance), index = MarketIndex.ETH_D),
     Metric("Volumen 24 h", formatCompactUsd(volume24h)),
     Metric("Cambio 24 h", formatPercent(capChange24hPct), changeColor(capChange24hPct)),
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun OverviewScreen(vm: OverviewViewModel, onSearch: () -> Unit) {
+fun OverviewScreen(vm: OverviewViewModel, onSearch: () -> Unit, onIndex: (MarketIndex) -> Unit) {
     val state by vm.state.collectAsStateWithLifecycle()
     AutoRefresh { vm.refresh() }
     Scaffold(
@@ -65,17 +71,19 @@ fun OverviewScreen(vm: OverviewViewModel, onSearch: () -> Unit) {
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                items(metrics.cards()) { MetricCard(it) }
+                items(metrics.cards()) { MetricCard(it, onIndex) }
             }
         }
     }
 }
 
 @Composable
-private fun MetricCard(metric: Metric) {
-    Card {
+private fun MetricCard(metric: Metric, onIndex: (MarketIndex) -> Unit) {
+    val index = metric.index
+    val clickable = if (index != null) Modifier.clickable { onIndex(index) } else Modifier
+    Card(Modifier.then(clickable)) {
         Column(Modifier.padding(12.dp)) {
-            Text(metric.label, style = MaterialTheme.typography.labelMedium)
+            Text(if (index != null) "${metric.label} ›" else metric.label, style = MaterialTheme.typography.labelMedium)
             Text(metric.value, style = MaterialTheme.typography.titleMedium, color = metric.color)
         }
     }
