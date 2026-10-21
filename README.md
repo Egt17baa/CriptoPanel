@@ -17,13 +17,16 @@ App Android (Kotlin + Jetpack Compose) con el mercado cripto y un panel DeFi en 
 
 ## Fuentes de datos (públicas y gratuitas)
 
-- [CoinGecko API](https://docs.coingecko.com/reference/introduction) (`api.coingecko.com/api/v3`): mercado, monedas, gráficos, búsqueda.
-  TOTAL2 = TOTAL − cap. BTC; TOTAL3 = TOTAL − cap. BTC − cap. ETH (definición de TradingView).
+- [CoinLore API](https://www.coinlore.com/cryptocurrency-data-api) (`api.coinlore.net`): datos de Mercado
+  (capitalización total, volumen, dominancia de BTC y ETH). Gratis, sin clave y sin límite estricto.
+  TOTAL2 = TOTAL × (1 − dominancia BTC); TOTAL3 = TOTAL × (1 − dominancia BTC − dominancia ETH).
+- [CoinGecko API](https://docs.coingecko.com/reference/introduction) (`api.coingecko.com/api/v3`): Top 100 con logos
+  y minigráficos, detalle de monedas, gráficos y búsqueda. Si su plan gratuito está saturado, el Top 100 usa CoinLore.
 - [TradingView](https://www.tradingview.com/widget-docs/widgets/charts/advanced-chart/): widget gratuito para los gráficos de índices.
 - [DefiLlama API](https://api-docs.defillama.com/) (`api.llama.fi`): TVL por red, histórico y protocolos (sin exchanges centralizados).
 
-El plan gratuito de CoinGecko limita las peticiones por minuto. La app guarda cada respuesta 60 s y, si se alcanza
-el límite o no hay conexión, sigue mostrando los últimos datos con un aviso.
+El plan gratuito de CoinGecko limita las peticiones por minuto (y en redes móviles muchas personas comparten IP).
+La app reintenta automáticamente, recurre a CoinLore cuando puede y nunca tapa los datos con un aviso de límite.
 
 ## Compilar
 
@@ -55,6 +58,6 @@ gradle -p jvm-check test
 
 ## Estado de verificación
 
-- `./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug`: compila, 55 tests pasan, lint sin errores.
+- `./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug`: compila, 61 tests pasan, lint sin errores.
 - Las respuestas reales de CoinGecko y DefiLlama se han comprobado contra los modelos de la app.
 - Falta probarla en un móvil o emulador: instala el APK con `./gradlew installDebug` y revisa cada pantalla.

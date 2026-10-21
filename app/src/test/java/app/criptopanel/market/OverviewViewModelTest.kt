@@ -18,13 +18,13 @@ import java.io.IOException
 class OverviewViewModelTest {
     @get:Rule val main = MainDispatcherRule()
 
-    private val fake = FakeCoinGeckoApi()
-    private val vm = OverviewViewModel(MarketRepository(fake))
+    private val coinLore = FakeCoinLoreApi()
+    private val vm = OverviewViewModel(MarketRepository(FakeCoinGeckoApi(), coinLore))
 
     @Test fun `refresh loads metrics`() = runTest(main.dispatcher) {
         vm.refresh()
         advanceUntilIdle()
-        assertEquals(1.305e12, vm.state.value.data!!.total2, 1.0)
+        assertEquals(2758813436905.867 * (1 - 0.6049), vm.state.value.data!!.total2, 1.0)
         assertFalse(vm.state.value.loading)
         assertNull(vm.state.value.error)
     }
@@ -32,7 +32,7 @@ class OverviewViewModelTest {
     @Test fun `error keeps previous data`() = runTest(main.dispatcher) {
         vm.refresh()
         advanceUntilIdle()
-        fake.failWith(IOException())
+        coinLore.failWith(IOException())
         vm.refresh(force = true)
         advanceUntilIdle()
         assertNotNull(vm.state.value.data)
@@ -40,8 +40,8 @@ class OverviewViewModelTest {
         assertFalse(vm.state.value.loading)
     }
 
-    @Test fun `rate limit message`() =
-        assertEquals("Límite de la API alcanzado, reintenta en un minuto", AppError.RateLimited.message())
+    @Test fun `busy message never mentions an api limit`() =
+        assertEquals("Servidor de datos ocupado, reintentando…", AppError.RateLimited.message())
 
     @Test fun `offline message`() = assertEquals("Sin conexión", AppError.Offline.message())
 }

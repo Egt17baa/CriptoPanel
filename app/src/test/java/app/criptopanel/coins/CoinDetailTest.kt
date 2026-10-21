@@ -7,6 +7,7 @@ import app.criptopanel.core.network.appJson
 import app.criptopanel.enqueueFixture
 import app.criptopanel.market.CoinDetailDto
 import app.criptopanel.market.FakeCoinGeckoApi
+import app.criptopanel.market.FakeCoinLoreApi
 import app.criptopanel.market.MarketRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -25,7 +26,7 @@ class CoinDetailTest {
     @get:Rule val main = MainDispatcherRule()
 
     private val server = MockWebServer().apply { start() }
-    private val repo = MarketRepository(server.api())
+    private val repo = MarketRepository(server.api(), server.api())
 
     @After fun tearDown() = server.shutdown()
 
@@ -51,7 +52,7 @@ class CoinDetailTest {
 
     @Test fun `changing range reloads chart`() = runTest(main.dispatcher) {
         val fake = FakeCoinGeckoApi()
-        val vm = CoinDetailViewModel("bitcoin", MarketRepository(fake))
+        val vm = CoinDetailViewModel("bitcoin", MarketRepository(fake, FakeCoinLoreApi()))
         advanceUntilIdle()
         assertEquals("Bitcoin", vm.state.value.data!!.name)
         vm.setRange(ChartRange.Y1)

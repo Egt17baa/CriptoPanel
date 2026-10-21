@@ -17,8 +17,12 @@ fun <T> UiState<T>.with(outcome: Outcome<T>): UiState<T> = when (outcome) {
     is Outcome.Err -> copy(loading = false, error = outcome.error)
 }
 
+/** The error worth showing: a busy data server is silent while there is data on screen (auto-refresh retries). */
+fun <T> UiState<T>.visibleError(): AppError? =
+    if (error == AppError.RateLimited && data != null) null else error
+
 fun AppError.message(): String = when (this) {
-    AppError.RateLimited -> "Límite de la API alcanzado, reintenta en un minuto"
+    AppError.RateLimited -> "Servidor de datos ocupado, reintentando…"
     AppError.Offline -> "Sin conexión"
     is AppError.Http -> "Error del servidor ($code)"
     is AppError.Unknown -> "Error inesperado"

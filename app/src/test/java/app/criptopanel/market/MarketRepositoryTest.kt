@@ -16,7 +16,7 @@ import org.junit.Test
 class MarketRepositoryTest {
     private val server = MockWebServer().apply { start() }
     private var clock = 1_000_000L
-    private val repo = MarketRepository(server.api(), now = { clock })
+    private val repo = MarketRepository(server.api(), server.api(), now = { clock })
 
     @After fun tearDown() = server.shutdown()
 
@@ -57,10 +57,39 @@ class MarketRepositoryTest {
     }
 
     @Test fun `error does not replace cache`() = runTest {
-        server.enqueueFixture("cg_global.json")
-        server.enqueue(MockResponse().setResponseCode(429))
+        server.enqueueFixture("cl_global.json")
+        repeat(3) { server.enqueue(MockResponse().setResponseCode(429)) }
         assertTrue(repo.global() is Outcome.Ok)
         assertEquals(Outcome.Err(AppError.RateLimited), repo.global(force = true))
-        assertEquals(1.305e12, (repo.global() as Outcome.Ok).value.total2, 1.0)
+        assertEquals(10.95, (repo.global() as Outcome.Ok).value.ethDominance, 1e-9)
+    }
+
+    @Test fun `global metrics come from CoinLore`() = runTest {
+        server.enqueueFixture("cl_global.json")
+        val m = (repo.global() as Outcome.Ok).value
+        val total = 2758813436905.867
+        assertEquals(total, m.totalCap, 1.0)
+        assertEquals(total * (1 - 0.6049), m.total2, 1.0)
+        assertEquals(total * (1 - 0.6049 - 0.1095), m.total3, 1.0)
+        assertEquals(60.49, m.btcDominance, 1e-9)
+        assertEquals(10.95, m.ethDominance, 1e-9)
+        assertEquals(112348604740.86633, m.volume24h, 1.0)
+        assertEquals(2.44, m.capChange24hPct!!, 1e-9)
+        assertEquals("/global/", server.takeRequest().path)
+    }
+
+    @Test fun `top coins fall back to CoinLore when CoinGecko keeps rate limiting`() = runTest {
+        repeat(3) { server.enqueue(MockResponse().setResponseCode(429)) }
+        server.enqueueFixture("cl_tickers.json")
+        val coins = (repo.topCoins() as Outcome.Ok).value
+        assertEquals(listOf("bitcoin", "ethereum", "tether"), coins.map { it.id })
+        assertEquals(listOf("BTC", "ETH", "USDT"), coins.map { it.symbol })
+        assertEquals(1, coins[0].rank)
+        assertTrue(coins[0].price!! > 0)
+        assertNull(coins[2].marketCap)
+        assertNull(coins[2].change7d)
+        assertEquals(emptyList<Double>(), coins[0].sparkline7d)
+        repeat(3) { server.takeRequest() }
+        assertEquals("/tickers/?start=0&limit=100", server.takeRequest().path)
     }
 }

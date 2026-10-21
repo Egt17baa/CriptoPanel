@@ -22,7 +22,7 @@ inline fun <reified T> decodeFixture(name: String): T = appJson.decodeFromString
 fun MockWebServer.enqueueFixture(name: String) = enqueue(MockResponse().setBody(fixture(name)))
 
 inline fun <reified T> MockWebServer.api(): T =
-    retrofit(url("/").toString(), okHttpClient(demoKey = "")).create(T::class.java)
+    retrofit(url("/").toString(), okHttpClient(demoKey = "", retrySleep = {})).create(T::class.java)
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MainDispatcherRule(val dispatcher: TestDispatcher = StandardTestDispatcher()) : TestWatcher() {

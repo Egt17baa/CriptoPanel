@@ -53,7 +53,7 @@ fun <T> StateContent(
         // Without data nothing below scrolls, so make the column scrollable for the pull gesture to fire.
         val scroll = if (data == null) Modifier.verticalScroll(rememberScrollState()) else Modifier
         Column(Modifier.fillMaxSize().then(scroll)) {
-            state.error?.let { ErrorBanner(it) }
+            state.visibleError()?.let { ErrorBanner(it) }
             when {
                 data != null -> content(data)
                 state.loading -> LoadingBox()

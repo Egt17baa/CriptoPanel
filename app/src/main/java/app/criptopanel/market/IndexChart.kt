@@ -2,6 +2,7 @@ package app.criptopanel.market
 
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import java.net.URLEncoder
 import java.util.TimeZone
 
 /** Market-wide indices charted with TradingView's CRYPTOCAP data. */
@@ -26,14 +27,14 @@ enum class ChartInterval(val label: String, val tvCode: String) {
     }
 }
 
-const val TRADINGVIEW_BASE_URL = "https://www.tradingview.com"
-const val TRADINGVIEW_EMBED_SCRIPT =
-    "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js"
+private const val WIDGET_PAGE = "https://www.tradingview-widget.com/embed-widget/advanced-chart/"
 
-/** Full-page HTML for TradingView's free Advanced Chart widget; the app's chips pick the interval. */
-fun tradingViewHtml(index: MarketIndex, interval: ChartInterval, dark: Boolean, timezone: String): String {
+/** TradingView's free Advanced Chart widget page, config in the URL hash; loaded directly, no host page. */
+fun tradingViewUrl(index: MarketIndex, interval: ChartInterval, dark: Boolean, timezone: String): String {
     val config = buildJsonObject {
         put("autosize", true)
+        put("width", "100%")
+        put("height", "100%")
         put("symbol", index.tvSymbol)
         put("interval", interval.tvCode)
         put("timezone", timezone)
@@ -44,27 +45,14 @@ fun tradingViewHtml(index: MarketIndex, interval: ChartInterval, dark: Boolean, 
         put("hide_side_toolbar", true)
         put("allow_symbol_change", false)
         put("save_image", false)
-        put("support_host", TRADINGVIEW_BASE_URL)
+        put("support_host", "https://www.tradingview.com")
     }
-    val background = if (dark) "#131722" else "#ffffff"
-    return """
-        <!DOCTYPE html>
-        <html>
-        <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <style>html, body { margin: 0; height: 100%; background: $background; }</style>
-        </head>
-        <body>
-        <div class="tradingview-widget-container" style="height:100%;width:100%">
-          <div class="tradingview-widget-container__widget" style="height:100%;width:100%"></div>
-          <script type="text/javascript" src="$TRADINGVIEW_EMBED_SCRIPT" async>
-          $config
-          </script>
-        </div>
-        </body>
-        </html>
-    """.trimIndent()
+    val hash = URLEncoder.encode(config.toString(), "UTF-8").replace("+", "%20")
+    return "${WIDGET_PAGE}?locale=es#$hash"
 }
+
+/** Only the widget page loads inside the app; any other link opens in the browser. */
+fun isWidgetUrl(url: String): Boolean = url.startsWith(WIDGET_PAGE)
 
 /** Time zone IDs accepted by TradingView widgets; any other ID silently falls back to a wrong zone. */
 val TRADINGVIEW_TIMEZONES = listOf(
@@ -98,13 +86,3 @@ fun tradingViewTimezone(zone: TimeZone, nowMs: Long = System.currentTimeMillis()
         ?: zones.firstOrNull { it.getOffset(nowMs) == zone.getOffset(nowMs) })
         ?.id ?: "Etc/UTC"
 }
-
-private val widgetDocumentPrefixes = listOf(
-    TRADINGVIEW_EMBED_SCRIPT,
-    "https://www.tradingview-widget.com/embed-widget/",
-    "https://s.tradingview.com/embed-widget/",
-)
-
-/** True when a failed request means the chart cannot show: the page, the embed script or the widget's iframe document. */
-fun isWidgetLoadFailure(url: String, isMainFrame: Boolean): Boolean =
-    isMainFrame || widgetDocumentPrefixes.any { url.startsWith(it) }

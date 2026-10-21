@@ -2,6 +2,7 @@ package app.criptopanel.search
 
 import app.criptopanel.MainDispatcherRule
 import app.criptopanel.market.FakeCoinGeckoApi
+import app.criptopanel.market.FakeCoinLoreApi
 import app.criptopanel.market.MarketRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceTimeBy
@@ -17,7 +18,7 @@ class SearchViewModelTest {
     @get:Rule val main = MainDispatcherRule()
 
     private val fake = FakeCoinGeckoApi()
-    private val vm by lazy { SearchViewModel(MarketRepository(fake)) }
+    private val vm by lazy { SearchViewModel(MarketRepository(fake, FakeCoinLoreApi())) }
 
     @Test fun `debounces and ignores short queries`() = runTest(main.dispatcher) {
         vm.onQuery("s")

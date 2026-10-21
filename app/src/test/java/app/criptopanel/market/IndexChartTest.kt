@@ -9,6 +9,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.net.URLDecoder
 import java.util.TimeZone
 
 class IndexChartTest {
@@ -23,28 +24,36 @@ class IndexChartTest {
         assertEquals(ChartInterval.H4, ChartInterval.DEFAULT)
     }
 
-    private fun widgetConfig(html: String): JsonObject {
-        val start = html.indexOf("embed-widget-advanced-chart.js")
-        assertTrue("missing embed script", start >= 0)
-        val json = html.substring(html.indexOf('{', start), html.indexOf("</script>", start)).trim()
-        return Json.parseToJsonElement(json).jsonObject
+    private fun widgetConfig(url: String): JsonObject {
+        val prefix = "https://www.tradingview-widget.com/embed-widget/advanced-chart/?locale=es#"
+        assertTrue(url, url.startsWith(prefix))
+        val hash = url.removePrefix(prefix)
+        assertFalse("spaces must not become +", hash.contains('+'))
+        return Json.parseToJsonElement(URLDecoder.decode(hash, "UTF-8")).jsonObject
     }
 
-    @Test fun `html embeds the advanced chart with the chosen symbol and interval`() {
-        val c = widgetConfig(tradingViewHtml(MarketIndex.TOTAL3, ChartInterval.H12, dark = true, timezone = "Europe/Madrid"))
+    @Test fun `url opens the advanced chart widget with the chosen symbol and interval`() {
+        val c = widgetConfig(tradingViewUrl(MarketIndex.TOTAL3, ChartInterval.H12, dark = true, timezone = "Europe/Madrid"))
         assertEquals("CRYPTOCAP:TOTAL3", c["symbol"]!!.jsonPrimitive.content)
         assertEquals("720", c["interval"]!!.jsonPrimitive.content)
         assertEquals("dark", c["theme"]!!.jsonPrimitive.content)
         assertEquals("es", c["locale"]!!.jsonPrimitive.content)
         assertEquals("Europe/Madrid", c["timezone"]!!.jsonPrimitive.content)
         assertEquals("1", c["style"]!!.jsonPrimitive.content)
+        assertEquals("100%", c["width"]!!.jsonPrimitive.content)
+        assertEquals("100%", c["height"]!!.jsonPrimitive.content)
         assertTrue(c["hide_top_toolbar"]!!.jsonPrimitive.boolean)
         assertTrue(c["autosize"]!!.jsonPrimitive.boolean)
         assertEquals(false, c["allow_symbol_change"]!!.jsonPrimitive.boolean)
     }
 
     @Test fun `light theme`() =
-        assertEquals("light", widgetConfig(tradingViewHtml(MarketIndex.BTC_D, ChartInterval.D1, dark = false, timezone = "UTC"))["theme"]!!.jsonPrimitive.content)
+        assertEquals("light", widgetConfig(tradingViewUrl(MarketIndex.BTC_D, ChartInterval.D1, dark = false, timezone = "UTC"))["theme"]!!.jsonPrimitive.content)
+
+    @Test fun `only the widget page may load inside the app`() {
+        assertTrue(isWidgetUrl(tradingViewUrl(MarketIndex.TOTAL, ChartInterval.H1, dark = false, timezone = "Etc/UTC")))
+        assertFalse(isWidgetUrl("https://www.tradingview.com/symbols/CRYPTOCAP-BTC.D/"))
+    }
 
     private val now = 1_792_540_800_000L
 
@@ -72,11 +81,4 @@ class IndexChartTest {
         assertEquals("Etc/UTC", tradingViewTimezone(TimeZone.getTimeZone("UTC"), now))
     }
 
-    @Test fun `widget load failures`() {
-        assertTrue(isWidgetLoadFailure(TRADINGVIEW_EMBED_SCRIPT, isMainFrame = false))
-        assertTrue(isWidgetLoadFailure("https://www.tradingview-widget.com/embed-widget/advanced-chart/?locale=es", isMainFrame = false))
-        assertTrue(isWidgetLoadFailure("about:blank", isMainFrame = true))
-        assertFalse(isWidgetLoadFailure("https://www.tradingview-widget.com/static/bundles/chart.js", isMainFrame = false))
-        assertFalse(isWidgetLoadFailure("https://telemetry.tradingview.com/widget/report", isMainFrame = false))
-    }
 }

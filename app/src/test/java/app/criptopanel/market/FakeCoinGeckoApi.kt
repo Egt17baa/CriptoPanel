@@ -17,8 +17,6 @@ class FakeCoinGeckoApi : CoinGeckoApi {
         return value()
     }
 
-    override suspend fun global(): GlobalEnvelopeDto = serve { decodeFixture("cg_global.json") }
-
     override suspend fun markets(
         vs: String, order: String, perPage: Int, page: Int, sparkline: Boolean, changes: String,
     ): List<CoinMarketDto> = serve { decodeFixture("cg_markets.json") }

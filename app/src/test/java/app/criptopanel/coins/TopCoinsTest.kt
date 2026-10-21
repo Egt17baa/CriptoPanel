@@ -2,6 +2,7 @@ package app.criptopanel.coins
 
 import app.criptopanel.MainDispatcherRule
 import app.criptopanel.market.FakeCoinGeckoApi
+import app.criptopanel.market.FakeCoinLoreApi
 import app.criptopanel.market.MarketRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -41,7 +42,7 @@ class TopCoinsTest {
         assertEquals(listOf(1, 2, null), filterAndSort(coins, "", SortKey.RANK).map { it.rank })
 
     @Test fun `view model applies query to loaded coins`() = runTest(main.dispatcher) {
-        val vm = TopCoinsViewModel(MarketRepository(FakeCoinGeckoApi()))
+        val vm = TopCoinsViewModel(MarketRepository(FakeCoinGeckoApi(), FakeCoinLoreApi()))
         vm.refresh()
         advanceUntilIdle()
         assertEquals(3, vm.state.value.data!!.size)

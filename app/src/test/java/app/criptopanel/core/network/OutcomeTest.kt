@@ -45,4 +45,30 @@ class OutcomeTest {
         assertNull(headerSent(okHttpClient(demoKey = "k1"), server))
         server.shutdown()
     }
+
+    private fun get(client: OkHttpClient, server: MockWebServer) =
+        client.newCall(Request.Builder().url(server.url("/x")).build()).execute().use { it.code }
+
+    @Test fun `429 is retried then succeeds`() {
+        val server = MockWebServer().apply { start() }
+        val sleeps = mutableListOf<Long>()
+        server.enqueue(MockResponse().setResponseCode(429))
+        server.enqueue(MockResponse().setBody("ok"))
+        assertEquals(200, get(okHttpClient(demoKey = "", retrySleep = { sleeps += it }), server))
+        assertEquals(2, server.requestCount)
+        assertEquals(listOf(1_000L), sleeps)
+        server.shutdown()
+    }
+
+    @Test fun `429 gives up after two retries honouring capped Retry-After`() {
+        val server = MockWebServer().apply { start() }
+        val sleeps = mutableListOf<Long>()
+        server.enqueue(MockResponse().setResponseCode(429).setHeader("Retry-After", "2"))
+        server.enqueue(MockResponse().setResponseCode(429).setHeader("Retry-After", "60"))
+        server.enqueue(MockResponse().setResponseCode(429))
+        assertEquals(429, get(okHttpClient(demoKey = "", retrySleep = { sleeps += it }), server))
+        assertEquals(3, server.requestCount)
+        assertEquals(listOf(2_000L, 3_000L), sleeps)
+        server.shutdown()
+    }
 }

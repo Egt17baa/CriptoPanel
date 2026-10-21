@@ -1,0 +1,15 @@
+[
+    {
+        "coins_count": 14993,
+        "active_markets": 26320,
+        "total_mcap": 2758813436905.867,
+        "total_volume": 112348604740.86633,
+        "btc_d": "60.49",
+        "eth_d": "10.95",
+        "mcap_change": "2.44",
+        "volume_change": "19.99",
+        "avg_change_percent": "0.22",
+        "volume_ath": 344187126190825200,
+        "mcap_ath": 33248067879029.688
+    }
+]

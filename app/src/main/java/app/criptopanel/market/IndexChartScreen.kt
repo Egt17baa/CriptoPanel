@@ -6,6 +6,8 @@ import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.webkit.CookieManager
+import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
@@ -13,6 +15,7 @@ import android.webkit.WebViewClient
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
@@ -22,6 +25,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -55,8 +59,8 @@ fun IndexChartScreen(index: MarketIndex, onBack: () -> Unit) {
     val context = LocalContext.current
     val failed = remember { mutableStateOf(!context.isOnline()) }
     val dark = isSystemInDarkTheme()
-    val html = remember(index, interval, dark) {
-        tradingViewHtml(index, interval, dark, tradingViewTimezone(TimeZone.getDefault()))
+    val url = remember(index, interval, dark) {
+        tradingViewUrl(index, interval, dark, tradingViewTimezone(TimeZone.getDefault()))
     }
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
@@ -101,8 +105,17 @@ fun IndexChartScreen(index: MarketIndex, onBack: () -> Unit) {
                     ) { Text("Reintentar") }
                 }
             } else {
-                key(html, reloads) {
-                    TradingViewWebView(html, onLoadError = { failed.value = true }, modifier = Modifier.fillMaxSize())
+                key(url, reloads) {
+                    var loading by remember { mutableStateOf(true) }
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        TradingViewWebView(
+                            url = url,
+                            onLoaded = { loading = false },
+                            onLoadError = { failed.value = true },
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                        if (loading) CircularProgressIndicator()
+                    }
                 }
             }
         }
@@ -111,21 +124,25 @@ fun IndexChartScreen(index: MarketIndex, onBack: () -> Unit) {
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-private fun TradingViewWebView(html: String, onLoadError: () -> Unit, modifier: Modifier) {
+private fun TradingViewWebView(url: String, onLoaded: () -> Unit, onLoadError: () -> Unit, modifier: Modifier) {
     AndroidView(
         modifier = modifier,
         factory = { context ->
             WebView(context).apply {
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = true
+                CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
+                webChromeClient = WebChromeClient()
                 webViewClient = object : WebViewClient() {
+                    override fun onPageFinished(view: WebView, url: String) = onLoaded()
+
                     override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
-                        if (isWidgetLoadFailure(request.url.toString(), request.isForMainFrame)) onLoadError()
+                        if (request.isForMainFrame) onLoadError()
                     }
 
                     // Links out of the widget (logo, attribution) open in the browser, never inside the app.
                     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
-                        if (!request.isForMainFrame) return false
+                        if (!request.isForMainFrame || isWidgetUrl(request.url.toString())) return false
                         try {
                             context.startActivity(Intent(Intent.ACTION_VIEW, request.url).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                         } catch (_: ActivityNotFoundException) {
@@ -133,7 +150,7 @@ private fun TradingViewWebView(html: String, onLoadError: () -> Unit, modifier: 
                         return true
                     }
                 }
-                loadDataWithBaseURL(TRADINGVIEW_BASE_URL, html, "text/html", "utf-8", null)
+                loadUrl(url)
             }
         },
         onRelease = { it.destroy() },

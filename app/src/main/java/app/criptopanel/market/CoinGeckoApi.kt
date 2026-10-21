@@ -5,9 +5,6 @@ import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface CoinGeckoApi {
-    @GET("global")
-    suspend fun global(): GlobalEnvelopeDto
-
     @GET("coins/markets")
     suspend fun markets(
         @Query("vs_currency") vs: String = "usd",

@@ -13,6 +13,7 @@ import app.criptopanel.core.network.apiCall
 
 class MarketRepository(
     private val api: CoinGeckoApi,
+    private val coinLore: CoinLoreApi,
     private val now: () -> Long = System::currentTimeMillis,
 ) {
     private val globalCache = TtlCache<GlobalMetrics>(now)
@@ -20,10 +21,16 @@ class MarketRepository(
     private val chartCaches = mutableMapOf<Pair<String, ChartRange>, TtlCache<List<Double>>>()
 
     suspend fun global(force: Boolean = false): Outcome<GlobalMetrics> =
-        globalCache.get(force) { api.global().data.toMetrics() }
+        globalCache.get(force) { coinLore.global().first().toMetrics() }
 
     suspend fun topCoins(force: Boolean = false): Outcome<List<CoinMarket>> =
-        topCache.get(force) { api.markets().map { it.toDomain() } }
+        topCache.get(force) {
+            when (val gecko = apiCall { api.markets().map { it.toDomain() } }) {
+                is Outcome.Ok -> gecko.value
+                // CoinGecko's free tier is often saturated on shared mobile IPs; CoinLore keeps the list visible.
+                is Outcome.Err -> coinLore.tickers().data.map { it.toDomain() }
+            }
+        }
 
     suspend fun coin(id: String): Outcome<CoinDetail> = apiCall { api.coin(id).toDomain() }
 
