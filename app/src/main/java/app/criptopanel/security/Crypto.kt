@@ -95,7 +95,7 @@ private fun blockGcm(engine: BlockCipher, encrypt: Boolean, key: ByteArray, nonc
             val out = ByteArray(getOutputSize(input.size))
             val n = processBytes(input, 0, input.size, out, 0)
             val total = n + doFinal(out, n)
-            if (total == out.size) out else out.copyOf(total)
+            if (total == out.size) out else out.copyOf(total).also { out.fill(0) }
         }
     } catch (e: InvalidCipherTextException) {
         throw CryptoFailure()
@@ -127,6 +127,7 @@ fun aead(alg: Aead, encrypt: Boolean, key: ByteArray, nonce: ByteArray, aad: Byt
                 aead(layer, encrypt, k, nonce, aad, data)
             } finally {
                 k.fill(0)
+                if (data !== input) data.fill(0) // Intermediate layer, no longer needed.
             }
         }
     }
@@ -145,7 +146,7 @@ fun aead(alg: Aead, encrypt: Boolean, key: ByteArray, nonce: ByteArray, aad: Byt
             val out = ByteArray(getOutputSize(input.size))
             val n = processBytes(input, 0, input.size, out, 0)
             val total = n + doFinal(out, n)
-            if (total == out.size) out else out.copyOf(total)
+            if (total == out.size) out else out.copyOf(total).also { out.fill(0) }
         }
     } catch (e: InvalidCipherTextException) {
         throw CryptoFailure()
@@ -287,11 +288,13 @@ fun encryptText(plain: String, secret: Secret, alg: Aead = Aead.AES_256_GCM, kdf
     val header = newHeader(Header.KIND_TEXT, alg, secret, kdf, random)
     val aad = header.bytes()
     val key = keyForHeader(secret, header)
+    val plainBytes = plain.toByteArray(Charsets.UTF_8)
     try {
-        val sealed = aead(alg, true, key, header.nonce, aad, plain.toByteArray(Charsets.UTF_8))
+        val sealed = aead(alg, true, key, header.nonce, aad, plainBytes)
         return TEXT_PREFIX + Base64.getUrlEncoder().withoutPadding().encodeToString(aad + sealed)
     } finally {
         key.fill(0)
+        plainBytes.fill(0)
     }
 }
 
@@ -322,7 +325,12 @@ fun decryptText(token: String, secret: Secret): String {
     if (sealed.size < header.alg.overhead) throw CryptoFailure()
     val key = keyForHeader(secret, header)
     try {
-        return aead(header.alg, false, key, header.nonce, aad, sealed).toString(Charsets.UTF_8)
+        val plain = aead(header.alg, false, key, header.nonce, aad, sealed)
+        try {
+            return plain.toString(Charsets.UTF_8)
+        } finally {
+            plain.fill(0)
+        }
     } finally {
         key.fill(0)
     }

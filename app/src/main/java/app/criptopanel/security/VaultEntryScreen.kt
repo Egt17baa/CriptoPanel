@@ -231,7 +231,7 @@ fun VaultEntryEditScreen(store: VaultStore, id: String?, initialType: EntryType,
                     val now = System.currentTimeMillis()
                     error = when {
                         title.isBlank() -> "Ponle un nombre"
-                        type == EntryType.TOTP && base32Decode(totp.secret) == null -> "La clave secreta no es válida (Base32: letras A-Z y números 2-7)"
+                        type == EntryType.TOTP && totpKey(totp.secret) == null -> "La clave secreta no es válida (Base32: letras A-Z y números 2-7, al menos 16)"
                         type == EntryType.SEED && seedWordCount(seed).first == 0 -> "Escribe las palabras"
                         else -> null
                     }

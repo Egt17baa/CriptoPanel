@@ -99,4 +99,45 @@ class VaultStoreTest {
         assertEquals(VaultState.NoVault, s.state.value)
         assertFalse(File(tmp.root, "vault.bin").exists())
     }
+
+    /** Runs [before] (once) as the computation is dispatched: a lock() that lands in the middle of a save. */
+    private class InterruptingDispatcher : kotlinx.coroutines.CoroutineDispatcher() {
+        var before: (() -> Unit)? = null
+        override fun dispatch(context: kotlin.coroutines.CoroutineContext, block: Runnable) {
+            before?.also { before = null }?.invoke()
+            block.run()
+        }
+    }
+
+    @Test fun `locking during a save neither corrupts the vault nor reopens it`() = runTest {
+        val compute = InterruptingDispatcher()
+        val s = VaultStore(File(tmp.root, "vault.bin"), Dispatchers.Unconfined, compute, now = { clock }, kdf = KdfParams(1024, 1, 1))
+        s.load()
+        s.create("maestra".toCharArray())
+        compute.before = { s.lock() }
+        s.upsert(entry("1", "Wallet"))
+        assertEquals(VaultState.Locked, s.state.value)
+        assertNull(s.dataKeyCopy())
+        // Saved with the real key: the master password still opens it, with the change.
+        s.unlock("maestra".toCharArray())
+        assertEquals(listOf("Wallet"), (s.state.value as VaultState.Unlocked).entries.map { it.title })
+        // Same for a master change in flight.
+        compute.before = { s.lock() }
+        assertTrue(s.changeMaster("nueva".toCharArray()))
+        assertEquals(VaultState.Locked, s.state.value)
+        s.unlock("nueva".toCharArray())
+        assertEquals(1, (s.state.value as VaultState.Unlocked).entries.size)
+    }
+
+    @Test fun `an unlock that finishes after leaving the app stays locked`() = runTest {
+        val compute = InterruptingDispatcher()
+        val s = VaultStore(File(tmp.root, "vault.bin"), Dispatchers.Unconfined, compute, now = { clock }, kdf = KdfParams(1024, 1, 1))
+        s.load()
+        s.create("maestra".toCharArray())
+        s.lock()
+        compute.before = { s.lock() }
+        s.unlock("maestra".toCharArray())
+        assertEquals(VaultState.Locked, s.state.value)
+        assertFalse(s.changeMaster("x".toCharArray()))
+    }
 }

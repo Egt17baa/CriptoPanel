@@ -66,9 +66,12 @@ fun encryptStream(
             val next = ByteArray(CHUNK_BYTES)
             val nextLen = if (currentLen == CHUNK_BYTES) input.readFully(next) else 0
             val last = nextLen == 0
-            output.write(aead(alg, true, key, streamNonce(header.nonce, counter, last), aad, current.copyOf(currentLen)))
+            val plain = current.copyOf(currentLen)
+            output.write(aead(alg, true, key, streamNonce(header.nonce, counter, last), aad, plain))
+            plain.fill(0)
+            current.fill(0)
             if (last) break
-            counter++
+            if (++counter == -1) throw CryptoFailure("Archivo demasiado grande") // Never reuse a nonce.
             current = next
             currentLen = nextLen
         }
@@ -107,9 +110,11 @@ fun decryptStream(input: InputStream, output: OutputStream, secret: Secret): Str
             val last = peek < 0
             if (!last) pin.unread(peek)
             if (!last && n != record.size) throw CryptoFailure()
-            output.write(aead(header.alg, false, key, streamNonce(header.nonce, counter, last), aad, record.copyOf(n)))
+            val plain = aead(header.alg, false, key, streamNonce(header.nonce, counter, last), aad, record.copyOf(n))
+            output.write(plain)
+            plain.fill(0)
             if (last) break
-            counter++
+            if (++counter == -1) throw CryptoFailure("Archivo demasiado grande") // Never reuse a nonce.
         }
         output.flush()
         return name

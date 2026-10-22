@@ -26,6 +26,12 @@ fun base32Decode(text: String): ByteArray? {
     return out.toByteArray()
 }
 
+/** Shortest TOTP key accepted (80 bits, what RFC 4226 allows as a minimum); shorter ones break the HMAC. */
+const val TOTP_MIN_KEY_BYTES = 10
+
+/** The decoded key if it is a usable TOTP secret. */
+fun totpKey(secret: String): ByteArray? = base32Decode(secret)?.takeIf { it.size >= TOTP_MIN_KEY_BYTES }
+
 private fun hmacName(algorithm: String) = when (algorithm.uppercase()) {
     "SHA256" -> "HmacSHA256"
     "SHA512" -> "HmacSHA512"
@@ -46,10 +52,14 @@ fun hotp(key: ByteArray, counter: Long, digits: Int, algorithm: String = "SHA1")
 
 /** Current code and the seconds it stays valid. */
 fun totpCode(s: TotpSecret, nowMillis: Long): Pair<String, Int>? {
-    val key = base32Decode(s.secret) ?: return null
+    val key = totpKey(s.secret) ?: return null
     val seconds = nowMillis / 1000
     val step = s.period.coerceIn(10, 120)
-    return hotp(key, seconds / step, s.digits.coerceIn(6, 8), s.algorithm) to (step - (seconds % step).toInt())
+    try {
+        return hotp(key, seconds / step, s.digits.coerceIn(6, 8), s.algorithm) to (step - (seconds % step).toInt())
+    } finally {
+        key.fill(0)
+    }
 }
 
 /** Parses an otpauth://totp/… link as QR codes carry it; null if it is not a usable TOTP link. */
@@ -64,7 +74,7 @@ fun parseOtpAuth(uri: String): TotpSecret? {
         val kv = it.split('=', limit = 2)
         if (kv.size == 2) kv[0].lowercase() to URLDecoder.decode(kv[1], "UTF-8") else null
     }.toMap()
-    val secret = query["secret"]?.takeIf { base32Decode(it) != null } ?: return null
+    val secret = query["secret"]?.takeIf { totpKey(it) != null } ?: return null
     val label = URLDecoder.decode((u.rawPath ?: "").removePrefix("/"), "UTF-8")
     val labelIssuer = label.substringBefore(':', "").trim()
     val account = label.substringAfter(':').trim()

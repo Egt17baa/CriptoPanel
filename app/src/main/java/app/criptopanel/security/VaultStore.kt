@@ -41,6 +41,12 @@ class VaultStore(
     private var dek: ByteArray? = null
     private var lastUse = 0L
 
+    /**
+     * Bumped by every [lock]. [lock] runs on the main thread without the mutex (leaving the app must lock at once),
+     * so operations work on their own copy of the key and only reopen the vault if no lock happened meanwhile.
+     */
+    @Volatile private var epoch = 0
+
     suspend fun load() = mutex.withLock {
         if (_state.value != VaultState.Loading) return@withLock
         vault = withContext(io) { if (file.exists()) runCatching { VaultCrypto.decodeFile(file.readText()) }.getOrNull() else null }
@@ -54,28 +60,45 @@ class VaultStore(
         Files.move(tmp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
     }
 
-    private fun opened(v: VaultFile, key: ByteArray) {
+    /**
+     * Shows [v] unlocked with [key], which the store now owns; if a [lock] happened since [since], it stays locked
+     * and [key] is wiped instead. The entries are read before the key is kept, so a wrong key is never held.
+     */
+    private fun opened(v: VaultFile, key: ByteArray, since: Int) {
         vault = v
-        // Wipe the previous key, unless it is this very array (saving a change keeps the same key).
+        if (epoch != since) {
+            key.fill(0)
+            if (_state.value !is VaultState.NoVault) _state.value = VaultState.Locked
+            return
+        }
+        val entries = try {
+            VaultCrypto.read(v, key).sortedBy { it.title.lowercase() }
+        } catch (e: CryptoFailure) {
+            key.fill(0)
+            throw e
+        }
         if (dek !== key) dek?.fill(0)
         dek = key
         lastUse = now()
-        _state.value = VaultState.Unlocked(VaultCrypto.read(v, key).sortedBy { it.title.lowercase() })
+        _state.value = VaultState.Unlocked(entries)
     }
 
     suspend fun create(master: CharArray) = mutex.withLock {
+        val since = epoch
         val (v, key) = withContext(compute) { VaultCrypto.create(master, now(), kdf) }
         save(v)
-        opened(v, key)
+        _state.value = VaultState.Locked
+        opened(v, key, since)
     }
 
     /** Throws [CryptoFailure] for a wrong password. */
     suspend fun unlock(master: CharArray) = mutex.withLock {
         val v = vault ?: return@withLock
+        val since = epoch
         val key = withContext(compute) { VaultCrypto.unlock(v, master) }
         val checked = v.copy(masterCheckedAt = now())
         save(checked)
-        opened(checked, key)
+        opened(checked, key, since)
     }
 
     val biometricAllowed: Boolean get() = vault?.let { now() - it.masterCheckedAt < MASTER_RECHECK_MS } ?: false
@@ -87,13 +110,14 @@ class VaultStore(
             key.fill(0)
             throw MasterRequired()
         }
-        opened(v, key)
+        opened(v, key, epoch)
     }
 
     /** A copy of the open data key, to wrap it with the biometric key; null while locked. */
     fun dataKeyCopy(): ByteArray? = dek?.copyOf()
 
     fun lock() {
+        epoch++
         dek?.fill(0)
         dek = null
         if (vault != null && _state.value is VaultState.Unlocked) _state.value = VaultState.Locked
@@ -112,13 +136,19 @@ class VaultStore(
         return false
     }
 
+    /** Saves the change even if the vault locks meanwhile (with a copy of the key), then reopens only if it did not. */
     private suspend fun modify(change: (List<VaultEntry>) -> List<VaultEntry>) = mutex.withLock {
         val v = vault ?: return@withLock
-        val key = dek ?: return@withLock
-        val current = (_state.value as? VaultState.Unlocked)?.entries ?: return@withLock
-        val next = withContext(compute) { VaultCrypto.write(v, key, change(current)) }
-        save(next)
-        opened(next, key)
+        val since = epoch
+        val key = dek?.copyOf() ?: return@withLock
+        val current = (_state.value as? VaultState.Unlocked)?.entries ?: return@withLock key.fill(0)
+        val next = try {
+            withContext(compute) { VaultCrypto.write(v, key, change(current)) }.also { save(it) }
+        } catch (e: Exception) {
+            key.fill(0)
+            throw e
+        }
+        opened(next, key, since)
     }
 
     suspend fun upsert(entry: VaultEntry) = modify { list ->
@@ -127,12 +157,19 @@ class VaultStore(
 
     suspend fun delete(id: String) = modify { list -> list.filterNot { it.id == id } }
 
-    suspend fun changeMaster(newMaster: CharArray) = mutex.withLock {
-        val v = vault ?: return@withLock
-        val key = dek ?: return@withLock
-        val next = withContext(compute) { VaultCrypto.changeMaster(v, key, newMaster, now(), kdf) }
+    /** New master password and a new data key; false if the vault was locked, so nothing changed. */
+    suspend fun changeMaster(newMaster: CharArray): Boolean = mutex.withLock {
+        val v = vault ?: return@withLock false
+        val since = epoch
+        val key = dek?.copyOf() ?: return@withLock false
+        val (next, newKey) = try {
+            withContext(compute) { VaultCrypto.changeMaster(v, key, newMaster, now(), kdf) }
+        } finally {
+            key.fill(0)
+        }
         save(next)
-        opened(next, key)
+        opened(next, newKey, since)
+        true
     }
 
     /** The encrypted vault as stored; safe to put anywhere (useless without the master password). */
@@ -140,12 +177,18 @@ class VaultStore(
 
     /** Replaces this vault with an exported one after checking its master password. Throws [CryptoFailure]. */
     suspend fun importReplace(text: String, master: CharArray) = mutex.withLock {
-        val incoming = VaultCrypto.decodeFile(text)
+        val since = epoch
+        val incoming = withContext(compute) { VaultCrypto.decodeFile(text) }
         val key = withContext(compute) { VaultCrypto.unlock(incoming, master) }
         val checked = incoming.copy(masterCheckedAt = now())
-        VaultCrypto.read(checked, key) // Validates the data before replacing anything.
+        try {
+            VaultCrypto.read(checked, key) // Validates the data before replacing anything.
+        } catch (e: CryptoFailure) {
+            key.fill(0)
+            throw e
+        }
         save(checked)
-        opened(checked, key)
+        opened(checked, key, since)
     }
 
     /** Deletes the vault for good (forgotten master password). */

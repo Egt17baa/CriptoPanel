@@ -2,6 +2,7 @@ package app.criptopanel.security
 
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -56,8 +57,16 @@ class VaultTotpTest {
     @Test fun `changing the master keeps entries and drops the old password`() {
         val (file, dek) = VaultCrypto.create("vieja".toCharArray(), 0, FAST)
         val withData = VaultCrypto.write(file, dek, listOf(entry("1")))
-        val changed = VaultCrypto.changeMaster(withData, dek, "nueva".toCharArray(), now = 9, kdf = FAST)
+        val (changed, newDek) = VaultCrypto.changeMaster(withData, dek, "nueva".toCharArray(), now = 9, kdf = FAST)
         assertNotEquals(withData.salt, changed.salt)
+        // A new data key: the old one (from an old export and the old password) opens nothing saved afterwards.
+        assertFalse(newDek.contentEquals(dek))
+        try {
+            VaultCrypto.read(changed, dek)
+            fail()
+        } catch (e: CryptoFailure) {
+            // expected
+        }
         assertEquals(9L, changed.masterCheckedAt)
         assertEquals(listOf("1"), VaultCrypto.read(changed, VaultCrypto.unlock(changed, "nueva".toCharArray())).map { it.id })
         try {
@@ -119,5 +128,13 @@ class VaultTotpTest {
     @Test fun `seed word counts`() {
         assertEquals(12 to true, seedWordCount(" abandon ".repeat(12)))
         assertEquals(13 to false, seedWordCount("a ".repeat(13)))
+    }
+
+    @Test fun `too short TOTP secrets are refused instead of crashing`() {
+        assertNull(totpKey("A"))
+        assertNull(totpKey("AAAAAAAA")) // 5 bytes
+        assertNull(parseOtpAuth("otpauth://totp/x?secret=A"))
+        assertNull(totpCode(TotpSecret("A"), 0))
+        assertEquals(10, totpKey("JBSWY3DPEHPK3PXP")!!.size)
     }
 }

@@ -81,7 +81,8 @@ fun copySensitive(context: Context, text: String) {
     cm.setPrimaryClip(clip)
     clipboardScope.launch {
         delay(CLIPBOARD_CLEAR_MS)
-        val still = runCatching { cm.primaryClip?.getItemAt(0)?.text?.toString() == text }.getOrDefault(false)
+        // From the background Android 10+ hides the clipboard from us (null): clear it anyway, never leave a secret there.
+        val still = runCatching { cm.primaryClip?.getItemAt(0)?.text?.toString()?.let { it == text } ?: true }.getOrDefault(true)
         if (still) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) cm.clearPrimaryClip() else cm.setPrimaryClip(ClipData.newPlainText("", ""))
         }

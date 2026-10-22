@@ -69,9 +69,14 @@ private val AAD_DATA = "criptopanel-vault-data-v1".toByteArray()
 private val b64 = Base64.getEncoder()
 private val unb64 = Base64.getDecoder()
 
-private fun seal(key: ByteArray, plain: ByteArray, aad: ByteArray, random: SecureRandom): String {
+/** Encrypts and then wipes [plain]. */
+private fun seal(key: ByteArray, plain: ByteArray, aad: ByteArray, random: SecureRandom, wipe: Boolean = true): String {
     val nonce = randomBytes(NONCE_BYTES, random)
-    return b64.encodeToString(nonce + aead(Aead.AES_256_GCM, true, key, nonce, aad, plain))
+    try {
+        return b64.encodeToString(nonce + aead(Aead.AES_256_GCM, true, key, nonce, aad, plain))
+    } finally {
+        if (wipe) plain.fill(0)
+    }
 }
 
 private fun open(key: ByteArray, sealed: String, aad: ByteArray): ByteArray {
@@ -94,7 +99,7 @@ object VaultCrypto {
             val file = VaultFile(
                 kdf = VaultKdf(kdf.memoryKiB, kdf.iterations, kdf.parallelism),
                 salt = b64.encodeToString(salt),
-                wrappedKey = seal(kek, dek, AAD_KEY, random),
+                wrappedKey = seal(kek, dek, AAD_KEY, random, wipe = false), // The open DEK stays in use.
                 data = seal(dek, encodeEntries(emptyList()), AAD_DATA, random),
                 masterCheckedAt = now,
             )
@@ -121,28 +126,42 @@ object VaultCrypto {
         }
     }
 
-    fun read(file: VaultFile, dek: ByteArray): List<VaultEntry> =
+    fun read(file: VaultFile, dek: ByteArray): List<VaultEntry> {
+        val json = open(dek, file.data, AAD_DATA)
         try {
-            appJson.decodeFromString<List<VaultEntry>>(open(dek, file.data, AAD_DATA).toString(Charsets.UTF_8))
+            return appJson.decodeFromString<List<VaultEntry>>(json.toString(Charsets.UTF_8))
         } catch (e: kotlinx.serialization.SerializationException) {
             throw CryptoFailure()
+        } finally {
+            json.fill(0)
         }
+    }
 
     /** Re-encrypts all entries with a fresh nonce. */
     fun write(file: VaultFile, dek: ByteArray, entries: List<VaultEntry>, random: SecureRandom = secureRandom): VaultFile =
         file.copy(data = seal(dek, encodeEntries(entries), AAD_DATA, random))
 
-    /** Same DEK and entries, wrapped with a new master password and salt. */
-    fun changeMaster(file: VaultFile, dek: ByteArray, newMaster: CharArray, now: Long, kdf: KdfParams = KdfParams(), random: SecureRandom = secureRandom): VaultFile {
+    /**
+     * Same entries under a new master password, new salt and a **new data key**: an old export plus the old (maybe
+     * leaked) password must not open anything saved after the change. Returns the file and the new open DEK.
+     */
+    fun changeMaster(file: VaultFile, dek: ByteArray, newMaster: CharArray, now: Long, kdf: KdfParams = KdfParams(), random: SecureRandom = secureRandom): Pair<VaultFile, ByteArray> {
+        val entries = read(file, dek)
+        val newDek = randomBytes(KEY_BYTES, random)
         val salt = randomBytes(SALT_BYTES, random)
         val kek = argon2id(newMaster, salt, kdf)
         try {
-            return file.copy(
+            val next = file.copy(
                 kdf = VaultKdf(kdf.memoryKiB, kdf.iterations, kdf.parallelism),
                 salt = b64.encodeToString(salt),
-                wrappedKey = seal(kek, dek, AAD_KEY, random),
+                wrappedKey = seal(kek, newDek, AAD_KEY, random, wipe = false), // The open DEK stays in use.
+                data = seal(newDek, encodeEntries(entries), AAD_DATA, random),
                 masterCheckedAt = now,
             )
+            return next to newDek
+        } catch (e: Exception) {
+            newDek.fill(0)
+            throw e
         } finally {
             kek.fill(0)
         }

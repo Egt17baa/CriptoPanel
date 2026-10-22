@@ -115,6 +115,28 @@ Revisado y correcto: HTTPS/WSS en todas las conexiones, sin tráfico en claro, s
 
 Riesgos que quedan (inherentes): las contraseñas escritas pasan por `String` de Compose y no se pueden borrar de memoria; un móvil con root o malware con permisos de accesibilidad puede leer la pantalla; no hay auditoría externa.
 
+## Segunda revisión (1.9.2)
+
+**Borrado de memoria (zeroing):** contraseñas como `CharArray`, claves derivadas (Argon2id, HKDF, capas de la cascada), la DEK, la KEK y la clave propia se ponen a cero al terminar; desde 1.9.2 también los bytes en claro (texto cifrado y descifrado, cada bloque de 64 KiB de los archivos, el JSON de la bóveda, las capas intermedias de la cascada y la clave TOTP). Límite inevitable: lo que se escribe o se muestra en pantalla pasa por `String` de Compose/Java, que no se puede borrar.
+
+**Derivación pesada:** Argon2id con 64 MiB, 3 pasadas (≈1 s en un móvil), por encima del mínimo de OWASP (19 MiB, 2 pasadas). La clave propia de 256 bits no la necesita (no se puede adivinar) y usa HKDF.
+
+**Streaming:** los archivos se cifran y descifran por registros de 64 KiB (como *age*); la memoria no depende del tamaño. Prueba: un archivo mayor que toda la memoria del proceso de pruebas pasa por cifrado y descifrado encadenados.
+
+Corregido:
+
+| Gravedad | Problema | Arreglo |
+|---|---|---|
+| Alta | Bloquear la bóveda (salir de la app o inactividad) mientras se guardaba ponía a cero la clave en uso: los datos podían guardarse con una clave de ceros y la bóveda quedaba inservible con la contraseña maestra. | Las operaciones usan una copia de la clave y un contador de bloqueos: se guarda con la clave buena y no se reabre si hubo bloqueo. Lo mismo para un desbloqueo que termina con la app ya cerrada. |
+| Media | Cambiar la contraseña maestra no cambiaba la clave de datos: una copia antigua + la contraseña antigua filtrada abrían también lo guardado después. | Nueva clave de datos en cada cambio de maestra. |
+| Media | Al salir de la app, Android 10+ no deja leer el portapapeles y no se borraba. | Se borra igualmente a los 45 s. |
+| Media | Un QR 2FA con una clave de 1 carácter bloqueaba para siempre la bóveda y el autenticador. | Mínimo 80 bits (16 caracteres Base32). |
+| Baja | Cambiar la maestra con la bóveda ya bloqueada decía «cambiada» sin cambiar nada. | Se avisa de que no se ha cambiado. |
+| Baja | Importar una bóveda enorme podía agotar la memoria. | Límite de 20 MB y lectura fuera del hilo principal. |
+| Baja | Contador de registros de archivo sin tope. | Se rechaza antes de repetir un nonce (256 TiB). |
+
+No se cambia: los campos `kdf`, `salt` y `masterCheckedAt` del archivo de bóveda no van autenticados; alterarlos exige escribir en los archivos privados de la app (root), y entonces el atacante ya controla el móvil.
+
 ## Avisos
 
 - En Seguridad, en Términos y en Privacidad: las herramientas no han pasado una auditoría de seguridad independiente. Para fondos importantes se recomienda una wallet hardware y un gestor de contraseñas auditado.

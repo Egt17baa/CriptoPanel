@@ -51,6 +51,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import app.criptopanel.portfolio.readAtMost
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -87,6 +88,8 @@ private fun Modifier.touchesVault(store: VaultStore) = pointerInput(store) {
         }
     }
 }
+
+private const val VAULT_IMPORT_MAX_BYTES = 20 * 1024 * 1024
 
 @Composable
 fun VaultIdleLock(store: VaultStore) {
@@ -125,7 +128,11 @@ fun VaultScreen(store: VaultStore, totpOnly: Boolean, onOpen: (String) -> Unit, 
     val importer = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) scope.launch {
             importText = runCatching {
-                withContext(Dispatchers.IO) { context.contentResolver.openInputStream(uri)!!.use { it.readBytes().decodeToString() } }
+                withContext(Dispatchers.IO) {
+                    // A real export is a few hundred KB; a huge file must not exhaust memory.
+                    context.contentResolver.openInputStream(uri)!!.use { it.readAtMost(VAULT_IMPORT_MAX_BYTES + 1) }
+                        .also { require(it.size <= VAULT_IMPORT_MAX_BYTES) }.decodeToString()
+                }
             }.getOrNull()
             if (importText == null) snackbar.showSnackbar("No se pudo leer el archivo") else dialog = "import"
         }
@@ -204,10 +211,14 @@ fun VaultScreen(store: VaultStore, totpOnly: Boolean, onOpen: (String) -> Unit, 
             onDismiss = { dialog = null },
         ) { pw ->
             scope.launch {
-                store.changeMaster(pw)
+                val changed = store.changeMaster(pw)
                 pw.fill('\u0000')
-                BiometricVault.disable(context) // The wrapped key is still valid, but make the user opt in again.
-                snackbar.showSnackbar("Contraseña maestra cambiada. Vuelve a activar la huella si la usabas.")
+                if (changed) {
+                    BiometricVault.disable(context) // It wrapped the old data key.
+                    snackbar.showSnackbar("Contraseña maestra cambiada. Vuelve a activar la huella si la usabas.")
+                } else {
+                    snackbar.showSnackbar("La bóveda se bloqueó: no se ha cambiado nada")
+                }
             }
             dialog = null
         }
