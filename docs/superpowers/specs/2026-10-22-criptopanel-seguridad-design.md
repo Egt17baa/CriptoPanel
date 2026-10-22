@@ -182,6 +182,14 @@ Lo que ninguna app puede impedir con root: volver a poner el archivo completo de
 
 Queda (inevitable): una sola palabra suelta en la línea siguiente al cifrado en un .txt se tomaría como parte de él (el descifrado falla y basta con borrarla).
 
+## Incidente eMudhra (1.9.6)
+
+En octubre de 2026 se supo que las claves privadas de **ocho CA intermedias de eMudhra** (seis TLS y dos de firma de código) se podían recuperar por falta de aleatoriedad. Navegadores, Go (CVE-2026-111943), rustls (RUSTSEC-2026-0382), Node.js y las distribuciones las bloquean, y Mozilla y Chrome retiran la raíz **emSign ECC Root CA - G3**. Esas intermedias están firmadas en cruzado por **AAA Certificate Services** (Comodo), que muchos Android aún aceptan, y el almacén de certificados de Android solo se actualiza con el sistema: en un móvil sin actualizar, un atacante en la red podía presentar un HTTPS falso de cualquier dominio.
+
+- Todo el tráfico de la app (APIs, WebSocket de Binance, comprobador de filtraciones y logos de monedas con Coil) usa un único cliente OkHttp con `DistrustingTrustManager`: primero decide el sistema, y después se rechaza cualquier cadena con la clave pública (SPKI SHA-256) de esas ocho intermedias o de las raíces emSign implicadas, o emitida por esas raíces.
+- Las huellas se comprobaron calculándolas desde los certificados publicados (emudhra.we-have-a-problem.com) y hay pruebas con el certificado real de una intermedia comprometida.
+- No cubre el WebView de los gráficos de TradingView (usa el almacén del sistema; solo muestra gráficos) ni otras apps del móvil: lo que lo resuelve del todo es la actualización de Android.
+
 ## Avisos
 
 - En Seguridad, en Términos y en Privacidad: las herramientas no han pasado una auditoría de seguridad independiente. Para fondos importantes se recomienda una wallet hardware y un gestor de contraseñas auditado.

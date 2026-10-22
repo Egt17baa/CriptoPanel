@@ -33,6 +33,7 @@ fun okHttpClient(
     retrySleep: (Long) -> Unit = Thread::sleep,
 ): OkHttpClient =
     OkHttpClient.Builder()
+        .distrustCompromisedCas()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .addInterceptor { chain ->

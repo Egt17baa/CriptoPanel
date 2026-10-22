@@ -44,7 +44,8 @@ const val ALERTS_FILE = "alerts.json"
 
 /** Manual dependency graph, one per process. */
 class AppContainer(demoKey: String, filesDir: File, notifier: AlertNotifier) {
-    private val client = okHttpClient(demoKey)
+    /** Every connection of the app, coin logos included, goes through this client (see distrustCompromisedCas). */
+    val client = okHttpClient(demoKey)
     private val coinGecko = retrofit(COINGECKO_BASE_URL, client).create(CoinGeckoApi::class.java)
     private val defiLlama = retrofit(DEFILLAMA_BASE_URL, client).create(DefiLlamaApi::class.java)
 
