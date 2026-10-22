@@ -39,10 +39,20 @@ fun encryptStream(
     alg: Aead = Aead.AES_256_GCM,
     kdf: KdfParams = KdfParams(),
     random: SecureRandom = secureRandom,
+) = encryptStream(input, output, name, Secret.Password(password), alg, kdf, random)
+
+fun encryptStream(
+    input: InputStream,
+    output: OutputStream,
+    name: String,
+    secret: Secret,
+    alg: Aead = Aead.AES_256_GCM,
+    kdf: KdfParams = KdfParams(),
+    random: SecureRandom = secureRandom,
 ) {
-    val header = Header(Header.KIND_FILE, alg, kdf, randomBytes(SALT_BYTES, random), randomBytes(STREAM_PREFIX_BYTES, random))
+    val header = newHeader(Header.KIND_FILE, alg, secret, kdf, random)
     val aad = header.bytes()
-    val key = argon2id(password, header.salt, kdf)
+    val key = keyForHeader(secret, header)
     try {
         output.write(aad)
         val nameBytes = safeFileName(name).toByteArray(Charsets.UTF_8).let { if (it.size > MAX_NAME_BYTES) it.copyOf(MAX_NAME_BYTES) else it }
@@ -69,26 +79,30 @@ fun encryptStream(
 }
 
 /** Decrypts what [encryptStream] wrote; returns the original file name. Throws [CryptoFailure] on any problem. */
-fun decryptStream(input: InputStream, output: OutputStream, password: CharArray): String {
+fun decryptStream(input: InputStream, output: OutputStream, password: CharArray): String =
+    decryptStream(input, output, Secret.Password(password))
+
+fun decryptStream(input: InputStream, output: OutputStream, secret: Secret): String {
     val pin = PushbackInputStream(input, 1)
     val fixed = ByteArray(Header.SIZE_BEFORE_NONCE + STREAM_PREFIX_BYTES)
     if (pin.readFully(fixed) != fixed.size) throw CryptoFailure("No es un archivo cifrado por CriptoPanel")
     val header = Header.parse(ByteBuffer.wrap(fixed), Header.KIND_FILE)
     val aad = fixed
-    val key = argon2id(password, header.salt, header.kdf)
+    val key = keyForHeader(secret, header)
     try {
         val lenBytes = ByteArray(2)
         if (pin.readFully(lenBytes) != 2) throw CryptoFailure()
         val nameLen = ByteBuffer.wrap(lenBytes).short.toInt() and 0xFFFF
-        if (nameLen < TAG_BYTES || nameLen > MAX_NAME_BYTES + TAG_BYTES) throw CryptoFailure()
+        val overhead = header.alg.overhead
+        if (nameLen < overhead || nameLen > MAX_NAME_BYTES + overhead) throw CryptoFailure()
         val sealedName = ByteArray(nameLen)
         if (pin.readFully(sealedName) != nameLen) throw CryptoFailure()
         val name = aead(header.alg, false, key, streamNonce(header.nonce, 0, false), aad, sealedName).toString(Charsets.UTF_8)
         var counter = 1
-        val record = ByteArray(CHUNK_BYTES + TAG_BYTES)
+        val record = ByteArray(CHUNK_BYTES + overhead)
         while (true) {
             val n = pin.readFully(record)
-            if (n < TAG_BYTES) throw CryptoFailure() // Missing final record: truncated.
+            if (n < overhead) throw CryptoFailure() // Missing final record: truncated.
             val peek = pin.read()
             val last = peek < 0
             if (!last) pin.unread(peek)

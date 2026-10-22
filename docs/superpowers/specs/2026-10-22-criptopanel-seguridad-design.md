@@ -1,6 +1,6 @@
 # CriptoPanel: apartado «Seguridad» (diseño)
 
-Fecha: 22 de octubre de 2026. Subproyecto 5. Estado: fases A (1.7.0) y B (1.8.0) implementadas. Por su tamaño se entrega en dos fases:
+Fecha: 22 de octubre de 2026. Subproyecto 5. Estado: fases A (1.7.0), B (1.8.0) y C (1.9.0) implementadas. Por su tamaño se entrega en dos fases:
 
 - **Fase A (1.7.0):** núcleo criptográfico, cifrado de texto, cifrado de archivos, generador de contraseñas y comprobadores.
 - **Fase B (1.8.0):** bóveda de contraseñas con huella, autenticador 2FA y exportación de la bóveda.
@@ -70,6 +70,27 @@ La cabecera entera va como datos asociados (AAD): no se puede alterar sin que el
 - **Autenticador 2FA** (TOTP, RFC 6238): con SHA-1, SHA-256 y SHA-512, de 6 u 8 dígitos y 30 s. Se añade escaneando el QR (escáner de Google Play services, sin permiso de cámara para la app), pegando un `otpauth://` o escribiendo la clave.
 - **Exportar e importar** la bóveda cifrada a un archivo. Al importar se pide su contraseña maestra.
 - **Sin recuperación:** si se olvida la contraseña maestra, los datos no se pueden recuperar. Se avisa al crear la bóveda.
+
+## Fase C (1.9.0): frases semilla, más algoritmos y clave propia
+
+Petición del usuario: cifrar las 12 o 24 palabras de una wallet «como Secret Space Encryptor», con una clave que guarda él y **sin huella**.
+
+- **Modo frase semilla** en Cifrar texto: autocompletado con la lista BIP-39 inglesa (2.048 palabras), aviso de palabras que no existen con sugerencia (prefijo único de 4 letras o una letra de diferencia), recuento y **checksum BIP-39** (SHA-256). Al descifrar, si el resultado es una frase válida se muestra numerada en columnas.
+- **Algoritmos** (todos con 256 bits y cifrado autenticado):
+
+| Id | Algoritmo | Implementación |
+|---|---|---|
+| 1 | AES-256-GCM (por defecto) | `javax.crypto` |
+| 2 | ChaCha20-Poly1305 | Bouncy Castle |
+| 3 | Twofish-256-GCM | Bouncy Castle |
+| 4 | Serpent-256-GCM | Bouncy Castle |
+| 5 | Camellia-256-GCM | Bouncy Castle |
+| 6 | Cascada AES → Twofish → Serpent | Tres capas GCM; cada capa con su clave derivada por HKDF-SHA256 (info `criptopanel-cascade-<capa>`). Sobrecarga: 48 bytes. |
+
+- **Secreto:** contraseña (KDF 1 = Argon2id) o **clave AES-256 aleatoria** (KDF 2 = clave directa, sin sal útil ni derivación). La clave se muestra como 64 caracteres hexadecimales en grupos de 4; al pegarla se ignoran espacios y mayúsculas. Si se intenta descifrar con el tipo de secreto equivocado, el mensaje lo dice.
+- **Descifrar** lee la cabecera y avisa del algoritmo y de si hace falta clave o contraseña.
+- Los archivos `.cpenc` admiten los mismos algoritmos y secretos; cada registro lleva la sobrecarga de su algoritmo.
+- **Pruebas:** vectores de Camellia (RFC 3713) y Twofish; ida y vuelta de texto y archivos con cada algoritmo y cada tipo de secreto; secreto equivocado y manipulación; checksums BIP-39 conocidos y sugerencias.
 
 ## Avisos
 

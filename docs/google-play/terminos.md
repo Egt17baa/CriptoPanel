@@ -20,7 +20,7 @@ La cartera, los favoritos y las alertas son herramientas personales: tú introdu
 
 ## 4 bis. Herramientas de seguridad
 
-Las herramientas de Seguridad (cifrado de texto y archivos, generador y comprobadores) usan algoritmos estándar (AES-256-GCM, ChaCha20-Poly1305, Argon2id) de librerías reconocidas, pero no han pasado una auditoría independiente. Si olvidas una contraseña de cifrado, nadie puede recuperar los datos. Para proteger fondos importantes usa una wallet hardware.
+Las herramientas de Seguridad (cifrado de texto y archivos, generador y comprobadores) usan algoritmos estándar (AES-256-GCM, ChaCha20-Poly1305, Twofish, Serpent, Camellia, Argon2id) de librerías reconocidas, pero no han pasado una auditoría independiente. Si olvidas una contraseña o pierdes una clave de cifrado, nadie puede recuperar los datos. Para proteger fondos importantes usa una wallet hardware.
 
 ## 5. Sin custodia ni operaciones
 

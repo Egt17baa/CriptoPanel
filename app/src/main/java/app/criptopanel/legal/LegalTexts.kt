@@ -50,8 +50,8 @@ val TERMS = listOf(
     LegalSection(
         "4 bis. Herramientas de seguridad",
         "Las herramientas de Seguridad (cifrado de texto y archivos, generador y comprobadores) usan algoritmos estándar " +
-            "(AES-256-GCM, ChaCha20-Poly1305, Argon2id) de librerías reconocidas, pero no han pasado una auditoría independiente. " +
-            "Si olvidas una contraseña de cifrado, nadie puede recuperar los datos. Para proteger fondos importantes usa una wallet hardware.",
+            "(AES-256-GCM, ChaCha20-Poly1305, Twofish, Serpent, Camellia, Argon2id) de librerías reconocidas, pero no han pasado una auditoría independiente. " +
+            "Si olvidas una contraseña o pierdes una clave de cifrado, nadie puede recuperar los datos. Para proteger fondos importantes usa una wallet hardware.",
     ),
     LegalSection(
         "5. Sin custodia ni operaciones",

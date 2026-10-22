@@ -51,16 +51,87 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import kotlin.math.roundToInt
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.AssistChip
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.clickable
 
+/** Every algorithm with what it is; AES-256 first as the sensible default. */
 @Composable
 private fun AlgorithmPicker(alg: Aead, onChange: (Aead) -> Unit) {
-    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-        Aead.entries.forEachIndexed { i, a ->
-            SegmentedButton(selected = a == alg, onClick = { onChange(a) }, shape = SegmentedButtonDefaults.itemShape(i, Aead.entries.size)) {
-                Text(a.label)
+    Column {
+        Aead.entries.forEach { a ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().clickable { onChange(a) }.padding(vertical = 4.dp),
+            ) {
+                RadioButton(selected = a == alg, onClick = { onChange(a) })
+                Column {
+                    Text(a.label, style = MaterialTheme.typography.titleSmall)
+                    Text(a.detail.substringAfter(": "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
         }
     }
+}
+
+/** Password (stretched with Argon2id) or a random AES-256 key the user keeps elsewhere, as in Secret Space Encryptor. */
+@Composable
+private fun SecretInput(
+    useKey: Boolean,
+    onUseKey: (Boolean) -> Unit,
+    password: String,
+    onPassword: (String) -> Unit,
+    keyHex: String,
+    onKeyHex: (String) -> Unit,
+    allowGenerate: Boolean,
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+        SegmentedButton(selected = !useKey, onClick = { onUseKey(false) }, shape = SegmentedButtonDefaults.itemShape(0, 2)) { Text("Contraseña") }
+        SegmentedButton(selected = useKey, onClick = { onUseKey(true) }, shape = SegmentedButtonDefaults.itemShape(1, 2)) { Text("Clave AES-256") }
+    }
+    if (!useKey) {
+        PasswordField(password, onPassword)
+        Text(
+            "Se convierte en clave con Argon2id. Usa una larga: una frase de 6 palabras del Generador es ideal.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    } else {
+        OutlinedTextField(
+            value = keyHex,
+            onValueChange = onKeyHex,
+            label = { Text("Clave (64 caracteres hexadecimales)") },
+            minLines = 2,
+            textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+            isError = keyHex.isNotBlank() && parseRawKey(keyHex) == null,
+            supportingText = { if (keyHex.isNotBlank() && parseRawKey(keyHex) == null) Text("No es una clave de 256 bits válida") },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (allowGenerate) FilledTonalButton(onClick = { onKeyHex(newRawKeyHex()) }) { Text("🎲 Generar clave") }
+            if (parseRawKey(keyHex) != null) OutlinedButton(onClick = { copySensitive(context, scope, keyHex) }) { Text("Copiar clave") }
+        }
+        Text(
+            "Una clave aleatoria de 256 bits: imposible de adivinar. Apúntala en papel y guárdala SEPARADA del texto cifrado: " +
+                "sin ella nadie, ni tú, puede descifrarlo.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+private fun secretOf(useKey: Boolean, password: String, keyHex: String): Secret? =
+    if (useKey) parseRawKey(keyHex)?.let { Secret.RawKey(it) } else password.takeIf { it.isNotEmpty() }?.let { Secret.Password(it.toCharArray()) }
+
+private fun Secret.wipe() = when (this) {
+    is Secret.Password -> chars.fill('\u0000')
+    is Secret.RawKey -> bytes.fill(0)
 }
 
 @Composable
@@ -94,63 +165,95 @@ private fun ToolColumn(title: String, onBack: () -> Unit, content: @Composable (
 fun TextCryptoScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val bip39 = remember { Bip39(context.assets.open("bip39_english.txt").bufferedReader().readLines().filter { it.isNotBlank() }) }
     var encrypt by remember { mutableStateOf(true) }
+    var seedMode by remember { mutableStateOf(true) }
     var alg by remember { mutableStateOf(Aead.AES_256_GCM) }
     var input by remember { mutableStateOf("") }
+    var useKey by remember { mutableStateOf(false) }
     var password by remember { mutableStateOf("") }
+    var keyHex by remember { mutableStateOf("") }
     var output by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
+    fun reset() {
+        output = null
+        error = null
+    }
 
     ToolColumn("Cifrar texto", onBack) {
         ModePicker(encrypt) {
             encrypt = it
-            output = null
-            error = null
+            input = ""
+            reset()
         }
-        OutlinedTextField(
-            value = input,
-            onValueChange = { input = it; output = null; error = null },
-            label = { Text(if (encrypt) "Texto a cifrar" else "Texto cifrado (empieza por $TEXT_PREFIX)") },
-            minLines = 4,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        PasswordField(password, { password = it; error = null })
         if (encrypt) {
-            Text("Algoritmo", style = MaterialTheme.typography.labelMedium)
-            AlgorithmPicker(alg) { alg = it }
-            Text(
-                "Quien lo reciba necesita la misma contraseña y CriptoPanel. Compártela por otro canal, nunca junto al texto.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(selected = seedMode, onClick = { seedMode = true; reset() }, label = { Text("🌱 Frase semilla") })
+                FilterChip(selected = !seedMode, onClick = { seedMode = false; reset() }, label = { Text("Texto libre") })
+            }
+            OutlinedTextField(
+                value = input,
+                onValueChange = { input = if (seedMode) it.lowercase() else it; reset() },
+                label = { Text(if (seedMode) "Las 12, 18 o 24 palabras de tu wallet" else "Texto a cifrar") },
+                minLines = 4,
+                keyboardOptions = if (seedMode) KeyboardOptions(autoCorrectEnabled = false, keyboardType = KeyboardType.Password) else KeyboardOptions.Default,
+                modifier = Modifier.fillMaxWidth(),
             )
+            if (seedMode) SeedHelper(bip39, input) { input = it }
+        } else {
+            OutlinedTextField(
+                value = input,
+                onValueChange = { input = it; reset() },
+                label = { Text("Texto cifrado (empieza por $TEXT_PREFIX)") },
+                minLines = 4,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            inspectText(input)?.let { (a, raw) ->
+                LaunchedEffect(a, raw) { useKey = raw }
+                Text("Cifrado con ${a.label} y ${if (raw) "una clave AES-256" else "una contraseña"}.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        SecretInput(useKey, { useKey = it; reset() }, password, { password = it; reset() }, keyHex, { keyHex = it; reset() }, allowGenerate = encrypt)
+        if (encrypt) {
+            Text("Algoritmo", style = MaterialTheme.typography.titleSmall)
+            AlgorithmPicker(alg) { alg = it }
         }
         Button(
-            enabled = !busy && input.isNotEmpty() && password.isNotEmpty(),
+            enabled = !busy && input.isNotBlank() && secretOf(useKey, password, keyHex) != null,
             onClick = {
+                val secret = secretOf(useKey, password, keyHex) ?: return@Button
                 busy = true
-                error = null
-                val pw = password.toCharArray()
+                reset()
+                val plain = if (seedMode) bip39.normalize(input).joinToString(" ") else input
                 scope.launch {
                     try {
-                        output = withContext(Dispatchers.Default) { if (encrypt) encryptText(input, pw, alg) else decryptText(input, pw) }
+                        output = withContext(Dispatchers.Default) { if (encrypt) encryptText(plain, secret, alg) else decryptText(input, secret) }
                     } catch (e: CryptoFailure) {
-                        error = e.message
+                        error = if (useKey && e.message == CryptoFailure().message) "Clave incorrecta o texto dañado" else e.message
                     } finally {
-                        pw.fill('\u0000')
+                        secret.wipe()
                         busy = false
                     }
                 }
             },
             modifier = Modifier.fillMaxWidth(),
         ) { Text(if (encrypt) "Cifrar" else "Descifrar") }
-        if (busy) Busy("Derivando la clave con Argon2id…")
+        if (busy) Busy(if (useKey) "Procesando…" else "Derivando la clave con Argon2id…")
         error?.let { Text(it, color = NegativeColor) }
         output?.let { out ->
+            val seed = !encrypt && bip39.check(out).let { it.validCount && it.unknown.isEmpty() }
             GlassCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(if (encrypt) "Texto cifrado" else "Texto original", style = MaterialTheme.typography.labelMedium)
-                    SelectionContainer { Text(out, fontFamily = if (encrypt) FontFamily.Monospace else FontFamily.Default) }
+                    Text(
+                        when {
+                            encrypt -> "Texto cifrado"
+                            seed -> "Frase semilla (${bip39.normalize(out).size} palabras)"
+                            else -> "Texto original"
+                        },
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                    if (seed) SeedGrid(bip39.normalize(out)) else SelectionContainer { Text(out, fontFamily = if (encrypt) FontFamily.Monospace else FontFamily.Default) }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         FilledTonalButton(onClick = { copySensitive(context, scope, out) }) { Text("Copiar") }
                         if (encrypt) {
@@ -159,6 +262,67 @@ fun TextCryptoScreen(onBack: () -> Unit) {
                             }) { Text("Compartir") }
                         }
                     }
+                    if (encrypt) {
+                        Text(
+                            "Guarda este texto donde quieras (nube, correo, papel). Sin tu ${if (useKey) "clave" else "contraseña"} es inútil. " +
+                                "Antes de borrar tu copia original, prueba a descifrarlo.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Word count, BIP-39 checksum, misspelled words with a one-tap fix, and completions for the word being typed. */
+@Composable
+private fun SeedHelper(bip39: Bip39, input: String, onChange: (String) -> Unit) {
+    if (input.isBlank()) return
+    val check = bip39.check(input)
+    val words = bip39.normalize(input)
+    val typing = if (input.endsWith(" ")) "" else words.lastOrNull().orEmpty()
+    val completions = if (typing.isNotEmpty() && typing !in bip39.words) bip39.complete(typing) else emptyList()
+    if (completions.isNotEmpty()) {
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+            completions.forEach { w ->
+                AssistChip(onClick = { onChange((words.dropLast(1) + w).joinToString(" ") + " ") }, label = { Text(w) })
+            }
+        }
+    }
+    check.unknown.filter { it.word != typing }.forEach { u ->
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Palabra ${u.position}: «${u.word}» no es BIP-39.", color = NegativeColor, modifier = Modifier.weight(1f))
+            u.suggestion?.let { s ->
+                TextButton(onClick = { onChange(words.mapIndexed { i, w -> if (i == u.position - 1) s else w }.joinToString(" ")) }) { Text("¿$s?") }
+            }
+        }
+    }
+    val (text, color) = when {
+        check.checksumOk == true -> "✓ ${check.count} palabras · checksum BIP-39 correcto" to PositiveColor
+        check.checksumOk == false -> "⚠ ${check.count} palabras pero el checksum no cuadra: revisa el orden o alguna palabra" to NegativeColor
+        !check.validCount -> "${check.count} palabras (lo habitual son 12, 15, 18, 21 o 24)" to MaterialTheme.colorScheme.onSurfaceVariant
+        else -> "${check.count} palabras" to MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Text(text, color = color, style = MaterialTheme.typography.bodySmall)
+}
+
+/** The recovered words numbered, as wallets show them. */
+@Composable
+private fun SeedGrid(words: List<String>) {
+    val columns = 3
+    val rows = (words.size + columns - 1) / columns
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        for (r in 0 until rows) {
+            Row {
+                for (c in 0 until columns) {
+                    val i = c * rows + r
+                    Text(
+                        words.getOrNull(i)?.let { "${(i + 1).toString().padStart(2)}. $it" }.orEmpty(),
+                        fontFamily = FontFamily.Monospace,
+                        modifier = Modifier.weight(1f),
+                    )
                 }
             }
         }
@@ -179,6 +343,8 @@ fun FileCryptoScreen(onBack: () -> Unit) {
     var source by remember { mutableStateOf<Uri?>(null) }
     var sourceName by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var useKey by remember { mutableStateOf(false) }
+    var keyHex by remember { mutableStateOf("") }
     var message by remember { mutableStateOf<Pair<Boolean, String>?>(null) }
     var busy by remember { mutableStateOf(false) }
     // Decrypted data waits here (app-private cache) until the user picks where to save it; deleted right after.
@@ -187,20 +353,20 @@ fun FileCryptoScreen(onBack: () -> Unit) {
     val saveEncrypted = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { dest ->
         val src = source ?: return@rememberLauncherForActivityResult
         if (dest == null) return@rememberLauncherForActivityResult
+        val secret = secretOf(useKey, password, keyHex) ?: return@rememberLauncherForActivityResult
         busy = true
-        val pw = password.toCharArray()
         scope.launch {
             message = try {
                 withContext(Dispatchers.IO) {
                     context.contentResolver.openInputStream(src)!!.use { input ->
-                        context.contentResolver.openOutputStream(dest, "wt")!!.use { out -> encryptStream(input.buffered(), out.buffered(), sourceName, pw, alg) }
+                        context.contentResolver.openOutputStream(dest, "wt")!!.use { out -> encryptStream(input.buffered(), out.buffered(), sourceName, secret, alg) }
                     }
                 }
                 true to "Archivo cifrado y guardado."
             } catch (e: Exception) {
                 false to "No se pudo cifrar el archivo."
             } finally {
-                pw.fill('\u0000')
+                secret.wipe()
                 busy = false
             }
         }
@@ -242,26 +408,26 @@ fun FileCryptoScreen(onBack: () -> Unit) {
         OutlinedButton(onClick = { pick.launch(arrayOf("*/*")) }, modifier = Modifier.fillMaxWidth()) {
             Text(if (source == null) (if (encrypt) "Elegir archivo" else "Elegir archivo $ENCRYPTED_EXTENSION") else sourceName)
         }
-        PasswordField(password, { password = it; message = null })
+        SecretInput(useKey, { useKey = it; message = null }, password, { password = it; message = null }, keyHex, { keyHex = it; message = null }, allowGenerate = encrypt)
         if (encrypt) {
-            Text("Algoritmo", style = MaterialTheme.typography.labelMedium)
+            Text("Algoritmo", style = MaterialTheme.typography.titleSmall)
             AlgorithmPicker(alg) { alg = it }
         }
         Button(
-            enabled = !busy && source != null && password.isNotEmpty(),
+            enabled = !busy && source != null && secretOf(useKey, password, keyHex) != null,
             onClick = {
                 if (encrypt) {
                     saveEncrypted.launch(sourceName + ENCRYPTED_EXTENSION)
                 } else {
                     val src = source ?: return@Button
+                    val secret = secretOf(useKey, password, keyHex) ?: return@Button
                     busy = true
-                    val pw = password.toCharArray()
                     scope.launch {
                         val tmp = File.createTempFile("dec", null, context.cacheDir)
                         try {
                             val name = withContext(Dispatchers.IO) {
                                 context.contentResolver.openInputStream(src)!!.use { input ->
-                                    tmp.outputStream().buffered().use { out -> decryptStream(input.buffered(), out, pw) }
+                                    tmp.outputStream().buffered().use { out -> decryptStream(input.buffered(), out, secret) }
                                 }
                             }
                             pending = tmp
@@ -273,7 +439,7 @@ fun FileCryptoScreen(onBack: () -> Unit) {
                             tmp.delete()
                             message = false to "No se pudo leer el archivo."
                         } finally {
-                            pw.fill('\u0000')
+                            secret.wipe()
                             busy = false
                         }
                     }

@@ -1,6 +1,14 @@
 package app.criptopanel.security
 
+import org.bouncycastle.crypto.BlockCipher
 import org.bouncycastle.crypto.InvalidCipherTextException
+import org.bouncycastle.crypto.digests.SHA256Digest
+import org.bouncycastle.crypto.engines.CamelliaEngine
+import org.bouncycastle.crypto.engines.SerpentEngine
+import org.bouncycastle.crypto.engines.TwofishEngine
+import org.bouncycastle.crypto.generators.HKDFBytesGenerator
+import org.bouncycastle.crypto.modes.GCMBlockCipher
+import org.bouncycastle.crypto.params.HKDFParameters
 import org.bouncycastle.crypto.generators.Argon2BytesGenerator
 import org.bouncycastle.crypto.modes.ChaCha20Poly1305
 import org.bouncycastle.crypto.params.AEADParameters
@@ -15,9 +23,13 @@ import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
 /** Authenticated ciphers offered; [id] is what the header stores. */
-enum class Aead(val id: Byte, val label: String) {
-    AES_256_GCM(1, "AES-256-GCM"),
-    CHACHA20_POLY1305(2, "ChaCha20-Poly1305"),
+enum class Aead(val id: Byte, val label: String, val detail: String) {
+    AES_256_GCM(1, "AES-256", "AES-256-GCM: el estándar mundial, acelerado por el hardware del móvil"),
+    CHACHA20_POLY1305(2, "ChaCha20", "ChaCha20-Poly1305: el moderno de TLS 1.3 y WireGuard"),
+    TWOFISH_256_GCM(3, "Twofish-256", "Twofish-256-GCM: finalista de AES, de Bruce Schneier"),
+    SERPENT_256_GCM(4, "Serpent-256", "Serpent-256-GCM: finalista de AES, con el mayor margen de seguridad"),
+    CAMELLIA_256_GCM(5, "Camellia-256", "Camellia-256-GCM: estándar ISO y del gobierno japonés"),
+    CASCADE(6, "Cascada", "AES-256 → Twofish-256 → Serpent-256: tres cifrados con claves independientes"),
     ;
 
     companion object {
@@ -73,8 +85,49 @@ internal fun argon2idRaw(password: ByteArray, salt: ByteArray, secret: ByteArray
     return out
 }
 
+/** GCM over any 128-bit block cipher from Bouncy Castle. */
+private fun blockGcm(engine: BlockCipher, encrypt: Boolean, key: ByteArray, nonce: ByteArray, aad: ByteArray, input: ByteArray): ByteArray =
+    try {
+        GCMBlockCipher.newInstance(engine).run {
+            init(encrypt, AEADParameters(KeyParameter(key), TAG_BYTES * 8, nonce, aad))
+            val out = ByteArray(getOutputSize(input.size))
+            val n = processBytes(input, 0, input.size, out, 0)
+            val total = n + doFinal(out, n)
+            if (total == out.size) out else out.copyOf(total)
+        }
+    } catch (e: InvalidCipherTextException) {
+        throw CryptoFailure()
+    }
+
+/** Independent 256-bit keys for each cascade layer, from the one key (HKDF-SHA256). */
+internal fun cascadeKey(key: ByteArray, layer: String): ByteArray {
+    val out = ByteArray(KEY_BYTES)
+    HKDFBytesGenerator(SHA256Digest()).apply { init(HKDFParameters(key, null, "criptopanel-cascade-$layer".toByteArray())) }.generateBytes(out, 0, out.size)
+    return out
+}
+
+private val CASCADE_LAYERS = listOf(Aead.AES_256_GCM, Aead.TWOFISH_256_GCM, Aead.SERPENT_256_GCM)
+
+/** Bytes each encryption adds: one tag, or one per layer for the cascade. */
+val Aead.overhead: Int get() = if (this == Aead.CASCADE) CASCADE_LAYERS.size * TAG_BYTES else TAG_BYTES
+
 /** One-shot AEAD: returns ciphertext ‖ tag, or the plaintext; throws [CryptoFailure] on a bad tag. */
 fun aead(alg: Aead, encrypt: Boolean, key: ByteArray, nonce: ByteArray, aad: ByteArray, input: ByteArray): ByteArray = when (alg) {
+    Aead.TWOFISH_256_GCM -> blockGcm(TwofishEngine(), encrypt, key, nonce, aad, input)
+    Aead.SERPENT_256_GCM -> blockGcm(SerpentEngine(), encrypt, key, nonce, aad, input)
+    Aead.CAMELLIA_256_GCM -> blockGcm(CamelliaEngine(), encrypt, key, nonce, aad, input)
+    // Each layer authenticates on its own; the same nonce is safe because every layer has a different key.
+    Aead.CASCADE -> {
+        val layers = if (encrypt) CASCADE_LAYERS else CASCADE_LAYERS.reversed()
+        layers.fold(input) { data, layer ->
+            val k = cascadeKey(key, layer.name)
+            try {
+                aead(layer, encrypt, k, nonce, aad, data)
+            } finally {
+                k.fill(0)
+            }
+        }
+    }
     Aead.AES_256_GCM -> try {
         Cipher.getInstance("AES/GCM/NoPadding").run {
             init(if (encrypt) Cipher.ENCRYPT_MODE else Cipher.DECRYPT_MODE, SecretKeySpec(key, "AES"), GCMParameterSpec(TAG_BYTES * 8, nonce))
@@ -97,18 +150,57 @@ fun aead(alg: Aead, encrypt: Boolean, key: ByteArray, nonce: ByteArray, aad: Byt
     }
 }
 
+/** What unlocks a ciphertext: a password (stretched with Argon2id) or a random 256-bit key used as is. */
+sealed interface Secret {
+    class Password(val chars: CharArray) : Secret
+    class RawKey(val bytes: ByteArray) : Secret {
+        init {
+            require(bytes.size == KEY_BYTES)
+        }
+    }
+}
+
+/** A fresh random AES-256 key, as 64 hex characters in groups of 4 for writing down. */
+fun newRawKeyHex(random: SecureRandom = secureRandom): String =
+    hex(randomBytes(KEY_BYTES, random)).lowercase().chunked(4).joinToString(" ")
+
+/** Parses a 64-hex-character key, ignoring spaces, dashes and case; null if it is not one. */
+fun parseRawKey(text: String): ByteArray? {
+    val clean = text.filter { !it.isWhitespace() && it != '-' && it != ':' }
+    if (clean.length != KEY_BYTES * 2 || clean.any { it.lowercaseChar() !in "0123456789abcdef" }) return null
+    return ByteArray(KEY_BYTES) { clean.substring(it * 2, it * 2 + 2).toInt(16).toByte() }
+}
+
+/** The encryption key for [secret]; for a raw key, a copy (the caller wipes it). */
+internal fun keyForHeader(secret: Secret, header: Header): ByteArray = when (secret) {
+    is Secret.Password -> {
+        if (header.kdfId != Header.KDF_ARGON2ID) throw CryptoFailure("Esto se cifró con una clave, no con una contraseña")
+        argon2id(secret.chars, header.salt, header.kdf)
+    }
+    is Secret.RawKey -> {
+        if (header.kdfId != Header.KDF_RAW_KEY) throw CryptoFailure("Esto se cifró con una contraseña, no con una clave")
+        secret.bytes.copyOf()
+    }
+}
+
 /** Header shared by texts and files; the whole of it is authenticated as associated data. */
 internal data class Header(
     val kind: Byte,
     val alg: Aead,
     val kdf: KdfParams,
+    /** [KDF_ARGON2ID] for passwords, [KDF_RAW_KEY] for a raw key (then [kdf] is unused and stored as zeros). */
+    val kdfId: Byte,
     val salt: ByteArray,
     /** Full 12-byte nonce for texts, 7-byte STREAM prefix for files. */
     val nonce: ByteArray,
 ) {
     fun bytes(): ByteArray = ByteBuffer.allocate(SIZE_BEFORE_NONCE + nonce.size).apply {
-        put(MAGIC); put(VERSION); put(kind); put(alg.id); put(KDF_ARGON2ID)
-        putInt(kdf.memoryKiB); put(kdf.iterations.toByte()); put(kdf.parallelism.toByte())
+        put(MAGIC); put(VERSION); put(kind); put(alg.id); put(kdfId)
+        if (kdfId == KDF_ARGON2ID) {
+            putInt(kdf.memoryKiB); put(kdf.iterations.toByte()); put(kdf.parallelism.toByte())
+        } else {
+            putInt(0); put(0); put(0)
+        }
         put(salt); put(nonce)
     }.array()
 
@@ -116,6 +208,7 @@ internal data class Header(
         val MAGIC = byteArrayOf('C'.code.toByte(), 'P'.code.toByte())
         const val VERSION: Byte = 1
         const val KDF_ARGON2ID: Byte = 1
+        const val KDF_RAW_KEY: Byte = 2
         const val KIND_TEXT: Byte = 1
         const val KIND_FILE: Byte = 2
         const val SIZE_BEFORE_NONCE = 2 + 1 + 1 + 1 + 1 + 4 + 1 + 1 + SALT_BYTES
@@ -131,23 +224,40 @@ internal data class Header(
             val kind = buf.get()
             if (kind != expectedKind) throw CryptoFailure(if (kind == KIND_FILE) "Esto es un archivo cifrado" else "Esto es un texto cifrado")
             val alg = Aead.of(buf.get())
-            if (buf.get() != KDF_ARGON2ID) throw CryptoFailure("Derivación de clave desconocida")
-            val kdf = KdfParams(buf.int, buf.get().toInt() and 0xFF, buf.get().toInt() and 0xFF).also { it.checkSane() }
+            val kdfId = buf.get()
+            if (kdfId != KDF_ARGON2ID && kdfId != KDF_RAW_KEY) throw CryptoFailure("Derivación de clave desconocida")
+            val kdf = KdfParams(buf.int, buf.get().toInt() and 0xFF, buf.get().toInt() and 0xFF)
+            if (kdfId == KDF_ARGON2ID) kdf.checkSane()
             val salt = ByteArray(SALT_BYTES).also { buf.get(it) }
             if (buf.remaining() < nonceSize(kind)) throw CryptoFailure()
             val nonce = ByteArray(nonceSize(kind)).also { buf.get(it) }
-            return Header(kind, alg, kdf, salt, nonce)
+            return Header(kind, alg, kdf, kdfId, salt, nonce)
         }
     }
 }
 
 const val TEXT_PREFIX = "CP1:"
 
+internal fun newHeader(kind: Byte, alg: Aead, secret: Secret, kdf: KdfParams, random: SecureRandom): Header {
+    val raw = secret is Secret.RawKey
+    return Header(
+        kind = kind,
+        alg = alg,
+        kdf = kdf,
+        kdfId = if (raw) Header.KDF_RAW_KEY else Header.KDF_ARGON2ID,
+        salt = if (raw) ByteArray(SALT_BYTES) else randomBytes(SALT_BYTES, random),
+        nonce = randomBytes(Header.nonceSize(kind), random),
+    )
+}
+
 /** Encrypts [plain] into "CP1:" + URL-safe Base64 of header ‖ ciphertext ‖ tag. */
-fun encryptText(plain: String, password: CharArray, alg: Aead = Aead.AES_256_GCM, kdf: KdfParams = KdfParams(), random: SecureRandom = secureRandom): String {
-    val header = Header(Header.KIND_TEXT, alg, kdf, randomBytes(SALT_BYTES, random), randomBytes(NONCE_BYTES, random))
+fun encryptText(plain: String, password: CharArray, alg: Aead = Aead.AES_256_GCM, kdf: KdfParams = KdfParams(), random: SecureRandom = secureRandom): String =
+    encryptText(plain, Secret.Password(password), alg, kdf, random)
+
+fun encryptText(plain: String, secret: Secret, alg: Aead = Aead.AES_256_GCM, kdf: KdfParams = KdfParams(), random: SecureRandom = secureRandom): String {
+    val header = newHeader(Header.KIND_TEXT, alg, secret, kdf, random)
     val aad = header.bytes()
-    val key = argon2id(password, header.salt, kdf)
+    val key = keyForHeader(secret, header)
     try {
         val sealed = aead(alg, true, key, header.nonce, aad, plain.toByteArray(Charsets.UTF_8))
         return TEXT_PREFIX + Base64.getUrlEncoder().withoutPadding().encodeToString(aad + sealed)
@@ -157,7 +267,18 @@ fun encryptText(plain: String, password: CharArray, alg: Aead = Aead.AES_256_GCM
 }
 
 /** Decrypts a "CP1:" text; spaces and line breaks added by chat apps are ignored. */
-fun decryptText(token: String, password: CharArray): String {
+fun decryptText(token: String, password: CharArray): String = decryptText(token, Secret.Password(password))
+
+/** How a "CP1:" text was encrypted, read from its header without any secret; null if it is not one. */
+fun inspectText(token: String): Pair<Aead, Boolean>? = try {
+    val raw = Base64.getUrlDecoder().decode(token.trim().filterNot { it.isWhitespace() }.removePrefix(TEXT_PREFIX))
+    val h = Header.parse(ByteBuffer.wrap(raw), Header.KIND_TEXT)
+    h.alg to (h.kdfId == Header.KDF_RAW_KEY)
+} catch (e: Exception) {
+    null
+}
+
+fun decryptText(token: String, secret: Secret): String {
     val clean = token.trim().filterNot { it.isWhitespace() }
     if (!clean.startsWith(TEXT_PREFIX)) throw CryptoFailure("El texto cifrado debe empezar por $TEXT_PREFIX")
     val raw = try {
@@ -169,8 +290,8 @@ fun decryptText(token: String, password: CharArray): String {
     val header = Header.parse(buf, Header.KIND_TEXT)
     val aad = raw.copyOfRange(0, raw.size - buf.remaining())
     val sealed = raw.copyOfRange(aad.size, raw.size)
-    if (sealed.size < TAG_BYTES) throw CryptoFailure()
-    val key = argon2id(password, header.salt, header.kdf)
+    if (sealed.size < header.alg.overhead) throw CryptoFailure()
+    val key = keyForHeader(secret, header)
     try {
         return aead(header.alg, false, key, header.nonce, aad, sealed).toString(Charsets.UTF_8)
     } finally {

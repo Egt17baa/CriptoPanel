@@ -39,8 +39,9 @@ Diseño Material 3 siempre oscuro, en gris y negro, con paneles de vidrio sobre 
   stablecoins, DeFi, seguridad, cómo leer CriptoPanel) con resumen y mini-test, y un glosario de 42 términos.
 - **Euros** (Más → Preferencias → Divisa): todo se ve en euros con el cambio del BCE (Frankfurter). La cartera usa
   el cambio del día de cada operación; los formularios se escriben en euros y se guardan en dólares.
-- **Seguridad** (en Más): cifrar texto (`CP1:…`) y archivos (`.cpenc`, por bloques de 64 KiB) con AES-256-GCM o
-  ChaCha20-Poly1305 y clave Argon2id (64 MiB, 3 pasadas); generador de contraseñas y frases (lista EFF) con entropía;
+- **Seguridad** (en Más): cifrar texto (`CP1:…`) y archivos (`.cpenc`, por bloques de 64 KiB) con AES-256-GCM,
+  ChaCha20-Poly1305, Twofish, Serpent, Camellia o la cascada AES→Twofish→Serpent, con contraseña (Argon2id, 64 MiB,
+  3 pasadas) o con una clave AES-256 aleatoria que guardas aparte; modo **frase semilla** con validación BIP-39; generador de contraseñas y frases (lista EFF) con entropía;
   comprobador de filtraciones (Have I Been Pwned, k-anonimato) y huella SHA-256 de archivos. Sin capturas de pantalla,
   portapapeles que se borra a los 45 s. **Bóveda** (contraseñas, frases semilla, notas y códigos 2FA): clave de datos
   aleatoria envuelta con Argon2id de la contraseña maestra y, opcionalmente, con una clave del Android Keystore que exige
