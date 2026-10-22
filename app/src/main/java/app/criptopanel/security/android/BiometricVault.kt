@@ -57,7 +57,14 @@ object BiometricVault {
         runCatching { keyStore().deleteEntry(ALIAS) }
     }
 
-    private fun prompt(activity: FragmentActivity, title: String, cipher: Cipher, onOk: (Cipher) -> Unit, onError: (String) -> Unit) {
+    private fun prompt(
+        activity: FragmentActivity,
+        title: String,
+        cipher: Cipher,
+        onOk: (Cipher) -> Unit,
+        onError: (String) -> Unit,
+        onCancel: () -> Unit = {},
+    ) {
         val info = BiometricPrompt.PromptInfo.Builder()
             .setTitle(title)
             .setSubtitle("Bóveda de CriptoPanel")
@@ -73,7 +80,9 @@ object BiometricVault {
                 }
 
                 override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                    if (errorCode != BiometricPrompt.ERROR_NEGATIVE_BUTTON && errorCode != BiometricPrompt.ERROR_USER_CANCELED) {
+                    if (errorCode == BiometricPrompt.ERROR_NEGATIVE_BUTTON || errorCode == BiometricPrompt.ERROR_USER_CANCELED) {
+                        onCancel()
+                    } else {
                         onError(errString.toString())
                     }
                 }
@@ -107,6 +116,8 @@ object BiometricVault {
         }, onError = {
             dataKey.fill(0)
             onDone(it)
+        }, onCancel = {
+            dataKey.fill(0) // Cancelled: the copy of the data key must not linger.
         })
     }
 

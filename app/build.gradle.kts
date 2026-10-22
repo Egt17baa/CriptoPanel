@@ -28,7 +28,7 @@ android {
         targetSdk = 36
         // Every Play upload needs a higher versionCode: pass -PversionCode=N (CI uses the run number).
         versionCode = (project.findProperty("versionCode") as String?)?.toInt() ?: 1
-        versionName = "1.9.4"
+        versionName = "1.9.5"
         buildConfigField("String", "COINGECKO_DEMO_KEY", "\"${localProps.getProperty("COINGECKO_DEMO_KEY", "")}\"")
     }
 

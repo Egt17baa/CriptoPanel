@@ -31,6 +31,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.platform.LocalTextToolbar
+import androidx.compose.ui.platform.TextToolbar
+import androidx.compose.ui.platform.TextToolbarStatus
 
 const val CLIPBOARD_CLEAR_MS = 45_000L
 
@@ -71,22 +76,72 @@ private var secureScreens = 0
 /** Outlives any screen, so leaving the screen right after copying still clears the clipboard. */
 private val clipboardScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
+/** Label of everything this app copies, so a leftover copy can be recognised later. */
+private const val CLIP_LABEL = "CriptoPanel"
+
+private fun ClipboardManager.wipe() {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) clearPrimaryClip() else setPrimaryClip(ClipData.newPlainText("", ""))
+}
+
 /** Copies [text] marked as sensitive (hidden in the keyboard's clipboard preview) and clears it after 45 s if unchanged. */
 fun copySensitive(context: Context, text: String) {
     val cm = context.getSystemService(ClipboardManager::class.java) ?: return
-    val clip = ClipData.newPlainText("CriptoPanel", text)
+    val clip = ClipData.newPlainText(CLIP_LABEL, text)
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         clip.description.extras = PersistableBundle().apply { putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true) }
     }
     cm.setPrimaryClip(clip)
     clipboardScope.launch {
         delay(CLIPBOARD_CLEAR_MS)
-        // From the background Android 10+ hides the clipboard from us (null): clear it anyway, never leave a secret there.
-        val still = runCatching { cm.primaryClip?.getItemAt(0)?.text?.toString()?.let { it == text } ?: true }.getOrDefault(true)
-        if (still) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) cm.clearPrimaryClip() else cm.setPrimaryClip(ClipData.newPlainText("", ""))
-        }
+        // Someone else's copy since then (an image, another app's text): leave it alone.
+        val label = runCatching { cm.primaryClipDescription?.label }.getOrNull()
+        if (label != null && label != CLIP_LABEL) return@launch
+        // Ours, or hidden from us (Android 10+ hides the clipboard from apps in the background): clear it, never
+        // leave a secret there. If it is readable and no longer our text, it was replaced: leave it.
+        val current = runCatching { cm.primaryClip?.getItemAt(0)?.text?.toString() }.getOrNull()
+        if (current == null || current == text) cm.wipe()
     }
+}
+
+/**
+ * Clears a copy of ours older than 45 s, left behind because the app was closed before its timer ran
+ * (Android 8–12 never clear the clipboard themselves). Call when the app has focus (needed to read it).
+ */
+fun clearStaleCopy(context: Context) {
+    val cm = context.getSystemService(ClipboardManager::class.java) ?: return
+    val desc = runCatching { cm.primaryClipDescription }.getOrNull() ?: return
+    if (desc.label == CLIP_LABEL && System.currentTimeMillis() - desc.timestamp >= CLIPBOARD_CLEAR_MS) cm.wipe()
+}
+
+/** The system text menu without Copy and Cut: those would skip the sensitive flag and the 45-second clearing. */
+private class NoCopyToolbar(private val base: TextToolbar) : TextToolbar {
+    override val status: TextToolbarStatus get() = base.status
+
+    override fun showMenu(
+        rect: Rect,
+        onCopyRequested: (() -> Unit)?,
+        onPasteRequested: (() -> Unit)?,
+        onCutRequested: (() -> Unit)?,
+        onSelectAllRequested: (() -> Unit)?,
+    ) = base.showMenu(rect, null, onPasteRequested, null, onSelectAllRequested)
+
+    override fun showMenu(
+        rect: Rect,
+        onCopyRequested: (() -> Unit)?,
+        onPasteRequested: (() -> Unit)?,
+        onCutRequested: (() -> Unit)?,
+        onSelectAllRequested: (() -> Unit)?,
+        onAutofillRequested: (() -> Unit)?,
+    ) = base.showMenu(rect, null, onPasteRequested, null, onSelectAllRequested, onAutofillRequested)
+
+    override fun hide() = base.hide()
+}
+
+/** Secrets typed or shown in [content] can only leave through the app's own "Copiar" (pasting still works). */
+@Composable
+fun NoCopy(content: @Composable () -> Unit) {
+    val base = LocalTextToolbar.current
+    CompositionLocalProvider(LocalTextToolbar provides remember(base) { NoCopyToolbar(base) }, content = content)
 }
 
 /** Password field with a show/hide switch; never put in saved state. */

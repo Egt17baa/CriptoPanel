@@ -10,8 +10,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.nio.file.Files
-import java.nio.file.StandardCopyOption
+import app.criptopanel.core.writeTextAtomically
 
 sealed interface VaultState {
     data object Loading : VaultState
@@ -69,12 +68,7 @@ class VaultStore(
         if (file.exists()) file.renameTo(File(file.path + ".bad-" + now()))
     }
 
-    private suspend fun save(v: VaultFile) = withContext(io) {
-        file.parentFile?.mkdirs()
-        val tmp = File(file.path + ".tmp")
-        tmp.writeText(VaultCrypto.encodeFile(v))
-        Files.move(tmp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
-    }
+    private suspend fun save(v: VaultFile) = withContext(io) { file.writeTextAtomically(VaultCrypto.encodeFile(v)) }
 
     /**
      * Shows [v] unlocked with [key], which the store now owns; if a [lock] happened since [since], it stays locked
@@ -83,13 +77,17 @@ class VaultStore(
     /**
      * Writes [next] and makes it the vault in memory, as one step that leaving the screen cannot cut in half
      * (otherwise disk and memory could disagree, and the next save would write the old file and key back).
+     * With [mustSave] false a failed write still opens the vault: [next] then only differs from the disk by
+     * bookkeeping (the last master check, the format upgrade), which the next successful save writes out.
      */
-    private suspend fun commit(next: VaultFile, key: ByteArray, since: Int) = withContext(NonCancellable) {
+    private suspend fun commit(next: VaultFile, key: ByteArray, since: Int, mustSave: Boolean = true) = withContext(NonCancellable) {
         try {
             save(next)
         } catch (e: Exception) {
-            key.fill(0)
-            throw e
+            if (mustSave) {
+                key.fill(0)
+                throw e
+            }
         }
         opened(next, key, since)
     }
@@ -118,7 +116,12 @@ class VaultStore(
         val (v, key) = withContext(compute) { VaultCrypto.create(master, now(), kdf) }
         withContext(io) { keepAside() } // Only reached with no readable vault: whatever file is there is kept.
         _state.value = VaultState.Locked
-        commit(v, key, since)
+        try {
+            commit(v, key, since)
+        } catch (e: Exception) {
+            _state.value = VaultState.NoVault // Nothing was written: back to creating one.
+            throw e
+        }
     }
 
     /** Throws [CryptoFailure] for a wrong password. */
@@ -132,7 +135,8 @@ class VaultStore(
             key.fill(0)
             throw e
         }
-        commit(checked, key, since)
+        // A full disk must not lock the user out of their passwords: open anyway (see [commit]).
+        commit(checked, key, since, mustSave = false)
     }
 
     val biometricAllowed: Boolean get() = vault?.let { VaultCrypto.biometricAllowed(it, now()) } ?: false

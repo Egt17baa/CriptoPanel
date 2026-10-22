@@ -92,12 +92,22 @@ internal fun Modifier.touchesVault(store: VaultStore) = pointerInput(store) {
 
 private const val VAULT_IMPORT_MAX_BYTES = 20 * 1024 * 1024
 
+/**
+ * Checked as a vault screen opens, before its first frame: time spent elsewhere in the app counts as idle.
+ * The periodic check runs app-wide ([VaultIdleTicker]), so the vault also locks while the user is on other tabs.
+ */
 @Composable
 fun VaultIdleLock(store: VaultStore) {
+    remember(store) { store.lockIfIdle() }
+}
+
+/** Locks the vault after [VAULT_IDLE_LOCK_MS] without use, wherever the user is in the app. */
+@Composable
+fun VaultIdleTicker(store: VaultStore) {
     LaunchedEffect(store) {
         while (true) {
-            delay(15_000)
             store.lockIfIdle()
+            delay(15_000)
         }
     }
 }
@@ -292,6 +302,7 @@ const val MIN_MASTER = 10
 
 @Composable
 private fun CreateVault(store: VaultStore) {
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var a by remember { mutableStateOf("") }
     var b by remember { mutableStateOf("") }
@@ -325,6 +336,8 @@ private fun CreateVault(store: VaultStore) {
                 val pw = a.toCharArray()
                 scope.launch {
                     try {
+                        // A fingerprint left from a previous (deleted or damaged) vault wraps the wrong key.
+                        BiometricVault.disable(context)
                         store.create(pw)
                     } catch (e: Exception) {
                         failed = true

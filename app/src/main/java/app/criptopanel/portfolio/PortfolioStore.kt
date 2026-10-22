@@ -11,8 +11,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerializationException
 import java.io.File
-import java.nio.file.Files
-import java.nio.file.StandardCopyOption
+import app.criptopanel.core.writeTextAtomically
 
 /** Why a change was refused; shown to the user as is. */
 const val SHORTFALL_MESSAGE = "No tenías tanta cantidad en esa fecha"
@@ -53,10 +52,7 @@ class PortfolioStore(
 
     private suspend fun write(next: PortfolioData) {
         withContext(io) {
-            file.parentFile?.mkdirs()
-            val tmp = File(file.path + ".tmp")
-            tmp.writeText(appJson.encodeToString(PortfolioData.serializer(), next))
-            Files.move(tmp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+            file.writeTextAtomically(appJson.encodeToString(PortfolioData.serializer(), next))
         }
         _data.value = next
     }

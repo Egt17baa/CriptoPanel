@@ -105,7 +105,7 @@ Revisión de todo el código (cifrado, bóveda, red, WebView, intents, importaci
 | Media | El borrado del portapapeles a los 45 s se cancelaba al salir de la pantalla: la frase copiada se quedaba en el portapapeles. | Temporizador en un ámbito del proceso, no de la pantalla. |
 | Baja | La frase semilla de la bóveda y el texto libre usaban el teclado normal, que aprende y sugiere palabras. | Teclado de contraseña, sin autocorrector. |
 | Baja | Un archivo descifrado podía quedarse en la caché si la app moría antes de guardarlo. | La ruta sobrevive a la recreación y los restos se borran al arrancar. |
-| Baja | Una cabecera manipulada podía pedir 1 GiB a Argon2id (cierre por falta de memoria). | Máximo 128 MiB y nunca más de la mitad de la memoria de la app (1.9.4). |
+| Baja | Una cabecera manipulada podía pedir 1 GiB a Argon2id (cierre por falta de memoria). | Máximo 128 MiB; por encima del coste por defecto, nunca más de la mitad de la memoria de la app (1.9.5). |
 | Baja | Clave AES-256 propia usada tal cual en todos los mensajes. | HKDF con sal aleatoria por mensaje (KDF 3). |
 | Baja | CSV: celdas que empiezan por `= + - @` se ejecutaban como fórmulas en Excel; un archivo enorme cerraba la app. | Se anteponen con `'` (y se quitan al importar); límite de 5 MB. |
 | Baja | El WebView de TradingView podía abrir enlaces de cualquier esquema (deep links de otras apps). | Solo `http`/`https`. |
@@ -159,6 +159,28 @@ Lo que ninguna app puede impedir con root: volver a poner el archivo completo de
 | Baja | Mantener pulsado → Copiar en secretos (bóveda, texto descifrado, generador) saltaba el portapapeles sensible y el borrado a los 45 s. | Sin selección de texto en secretos. |
 | Baja | Errores de disco al guardar, crear o importar cerraban la app. | Se muestran como error. |
 | Baja | Un `vault.bin` dañado o ilegible se trataba como «sin bóveda» y crear una nueva lo sobrescribía. | Se aparta como `vault.bin.bad-<fecha>` y nunca se sobrescribe. |
+
+## Cuarta revisión (1.9.5): skills `security-review` y `code-review` (max)
+
+`security-review` (área de seguridad completa, umbral de confianza ≥ 8/10): ninguna vulnerabilidad alta ni media. `code-review` encontró fallos de robustez, todos corregidos:
+
+| Problema | Arreglo |
+|---|---|
+| 1.9.4 rechazaba el coste por defecto de Argon2id (64 MiB) en móviles con menos de 128 MiB de memoria para la app: no abrían su propia bóveda ni sus textos. | El coste por defecto se acepta siempre; el límite por memoria solo se aplica a costes mayores. |
+| El bloqueo por inactividad solo contaba en las pantallas de la bóveda. | Comprobación en toda la app cada 15 s y al abrir una pantalla de la bóveda, antes de mostrarla. |
+| Girar o plegar el móvil bloqueaba la bóveda. | No se bloquea al recrear la pantalla por un cambio de configuración. |
+| Guardar sin `fsync`: un apagón podía dejar `vault.bin` (y cartera y alertas) vacío. | Escritura atómica con `fsync` antes de renombrar (`writeTextAtomically`). |
+| Con el almacenamiento lleno, la contraseña maestra correcta no abría la bóveda; crear una bóveda fallida la mostraba como bloqueada; borrar una entrada cerraba la app. | Se abre igualmente (solo falla guardar la fecha de comprobación); crear vuelve a «Crea tu bóveda»; borrar muestra el error. |
+| Si el sistema cerraba la app antes de los 45 s, el portapapeles conservaba el secreto; una imagen copiada después se borraba. | Al volver a la app se borra una copia nuestra con más de 45 s; solo se borra lo que lleva nuestra etiqueta (o lo que no se puede leer). |
+| Cancelar «Activar huella» no borraba la copia de la clave de datos. | Se pone a cero al cancelar. |
+| Doble toque en Guardar creaba dos entradas. | Un único id por entrada nueva y botón bloqueado mientras guarda. |
+| Importar un .txt con una nota debajo o un punto detrás pegaba el texto al cifrado. | Una línea solo continúa el cifrado si es entera Base64url; en la primera línea termina en el primer otro carácter. |
+| Mantener pulsado → Copiar en la clave AES-256 y en las frases que se escriben saltaba el portapapeles sensible. | Sin «Copiar» ni «Cortar» del sistema en las pantallas de cifrado y edición de la bóveda (pegar sí funciona); teclado de contraseña en la clave y las notas seguras. |
+| Al girar con el selector de archivos abierto o al fallar el cifrado quedaban archivos vacíos o cortados. | Se borra el documento creado y se avisa. |
+| Crear una bóveda nueva no desactivaba una huella de la anterior. | Se desactiva al crear. |
+| Cada pulsación creaba una copia de la contraseña o la clave para comprobar el botón, y se volvía a decodificar el texto cifrado. | Comprobación sin copias; la cabecera se lee una vez por texto. |
+
+Queda (inevitable): una sola palabra suelta en la línea siguiente al cifrado en un .txt se tomaría como parte de él (el descifrado falla y basta con borrarla).
 
 ## Avisos
 

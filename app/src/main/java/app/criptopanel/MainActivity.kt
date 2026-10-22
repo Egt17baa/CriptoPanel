@@ -13,6 +13,7 @@ import app.criptopanel.core.ui.CriptoPanelTheme
 import app.criptopanel.navigation.AppNavHost
 import app.criptopanel.navigation.allowedExternalRoute
 import app.criptopanel.security.VaultLock
+import app.criptopanel.security.clearStaleCopy
 import kotlinx.coroutines.flow.MutableStateFlow
 
 /** A FragmentActivity because the biometric prompt needs one. */
@@ -43,9 +44,15 @@ class MainActivity : FragmentActivity() {
         VaultLock.keepOpenOnce = false
     }
 
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) clearStaleCopy(this)
+    }
+
     override fun onStop() {
         super.onStop()
         // Leaving the app locks the vault, except while a picker or the QR scanner we opened is on top.
-        if (!VaultLock.keepOpenOnce) (application as CriptoPanelApp).container.vault.lock()
+        // Rotating, folding or resizing recreates the activity without leaving the app: no lock then.
+        if (!VaultLock.keepOpenOnce && !isChangingConfigurations) (application as CriptoPanelApp).container.vault.lock()
     }
 }

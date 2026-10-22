@@ -11,8 +11,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerializationException
 import java.io.File
-import java.nio.file.Files
-import java.nio.file.StandardCopyOption
+import app.criptopanel.core.writeTextAtomically
 
 /** Alerts, kept on the device in one JSON file written atomically (same approach as the portfolio). */
 class AlertStore(
@@ -48,10 +47,7 @@ class AlertStore(
         ensureLoaded()
         val next = AlertsData(alerts = transform(_data.value.alerts))
         withContext(io) {
-            file.parentFile?.mkdirs()
-            val tmp = File(file.path + ".tmp")
-            tmp.writeText(appJson.encodeToString(AlertsData.serializer(), next))
-            Files.move(tmp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+            file.writeTextAtomically(appJson.encodeToString(AlertsData.serializer(), next))
         }
         _data.value = next
     }

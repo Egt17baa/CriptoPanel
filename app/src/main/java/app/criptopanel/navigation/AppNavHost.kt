@@ -102,6 +102,7 @@ import app.criptopanel.security.GeneratorScreen
 import app.criptopanel.security.FileHashScreen
 import app.criptopanel.security.FileCryptoScreen
 import app.criptopanel.security.BreachScreen
+import app.criptopanel.security.VaultIdleTicker
 import app.criptopanel.security.VaultScreen
 import app.criptopanel.security.VaultEntryEditScreen
 import app.criptopanel.security.VaultEntryDetailScreen
@@ -140,6 +141,8 @@ fun AppNavHost(pendingRoute: MutableStateFlow<String?> = MutableStateFlow(null))
         alertStore.data.map { d -> d.alerts.count { it.enabled } }.distinctUntilChanged()
             .collect { AlertService.sync(context, it) }
     }
+    // The vault locks after 5 minutes unused, on any screen.
+    VaultIdleTicker(container.vault)
     // A tapped notification asks for a screen.
     LaunchedEffect(pendingRoute) {
         pendingRoute.filterNotNull().collect { route ->

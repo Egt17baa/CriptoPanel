@@ -60,6 +60,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.AssistChip
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.clickable
+import android.provider.DocumentsContract
 
 /** Every algorithm with what it is; AES-256 first as the sensible default. */
 @Composable
@@ -111,13 +112,14 @@ private fun SecretInput(
             label = { Text("Clave (64 caracteres hexadecimales)") },
             minLines = 2,
             textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
-            isError = keyHex.isNotBlank() && parseRawKey(keyHex) == null,
-            supportingText = { if (keyHex.isNotBlank() && parseRawKey(keyHex) == null) Text("No es una clave de 256 bits válida") },
+            isError = keyHex.isNotBlank() && !isRawKeyText(keyHex),
+            supportingText = { if (keyHex.isNotBlank() && !isRawKeyText(keyHex)) Text("No es una clave de 256 bits válida") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false),
             modifier = Modifier.fillMaxWidth(),
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (allowGenerate) FilledTonalButton(onClick = { onKeyHex(newRawKeyHex()) }) { Text("🎲 Generar clave") }
-            if (parseRawKey(keyHex) != null) OutlinedButton(onClick = { copySensitive(context, keyHex) }) { Text("Copiar clave") }
+            if (isRawKeyText(keyHex)) OutlinedButton(onClick = { copySensitive(context, keyHex) }) { Text("Copiar clave") }
         }
         Text(
             "Una clave aleatoria de 256 bits: imposible de adivinar. Apúntala en papel y guárdala SEPARADA del texto cifrado: " +
@@ -128,6 +130,11 @@ private fun SecretInput(
     }
 }
 
+/** Whether a secret has been entered; unlike [secretOf] it builds no copy of it (called on every recomposition). */
+private fun hasSecret(useKey: Boolean, password: String, keyHex: String): Boolean =
+    if (useKey) isRawKeyText(keyHex) else password.isNotEmpty()
+
+/** The secret to use now; the caller wipes it when done. */
 private fun secretOf(useKey: Boolean, password: String, keyHex: String): Secret? =
     if (useKey) parseRawKey(keyHex)?.let { Secret.RawKey(it) } else password.takeIf { it.isNotEmpty() }?.let { Secret.Password(it.toCharArray()) }
 
@@ -156,10 +163,12 @@ private fun Busy(text: String) {
 private fun ToolColumn(title: String, onBack: () -> Unit, content: @Composable () -> Unit) {
     SecureWindow()
     BackScaffold(title, onBack) { padding ->
-        Column(
-            Modifier.padding(padding).verticalScroll(rememberScrollState()).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) { content() }
+        NoCopy {
+            Column(
+                Modifier.padding(padding).verticalScroll(rememberScrollState()).padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) { content() }
+        }
     }
 }
 
@@ -184,8 +193,13 @@ fun TextCryptoScreen(onBack: () -> Unit) {
     }
     var fileMessage by remember { mutableStateOf<Pair<Boolean, String>?>(null) }
     val saveTxt = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { dest ->
-        val text = output ?: return@rememberLauncherForActivityResult
         if (dest == null) return@rememberLauncherForActivityResult
+        val text = output ?: run {
+            // The screen was rebuilt while the dialog was open (the result is never kept in saved state).
+            discardDocument(context, dest)
+            fileMessage = false to "No se ha guardado: vuelve a cifrar el texto."
+            return@rememberLauncherForActivityResult
+        }
         scope.launch {
             fileMessage = try {
                 withContext(Dispatchers.IO) {
@@ -193,6 +207,7 @@ fun TextCryptoScreen(onBack: () -> Unit) {
                 }
                 true to "Guardado. El archivo solo contiene el texto cifrado: sin tu ${if (useKey) "clave" else "contraseña"} no sirve de nada."
             } catch (e: Exception) {
+                discardDocument(context, dest)
                 false to "No se pudo guardar el archivo."
             }
         }
@@ -251,7 +266,7 @@ fun TextCryptoScreen(onBack: () -> Unit) {
             OutlinedButton(onClick = { fileMessage = null; openTxt.launch(arrayOf("text/plain", "application/octet-stream", "*/*")) }, modifier = Modifier.fillMaxWidth()) {
                 Text("📂 Importar archivo .txt")
             }
-            val detected = inspectText(input)
+            val detected = remember(input) { inspectText(input) }
             if (detected != null) {
                 val (a, raw) = detected
                 LaunchedEffect(a, raw) { useKey = raw }
@@ -270,7 +285,7 @@ fun TextCryptoScreen(onBack: () -> Unit) {
             AlgorithmPicker(alg) { alg = it }
         }
         Button(
-            enabled = !busy && input.isNotBlank() && secretOf(useKey, password, keyHex) != null,
+            enabled = !busy && input.isNotBlank() && hasSecret(useKey, password, keyHex),
             onClick = {
                 val secret = secretOf(useKey, password, keyHex) ?: return@Button
                 busy = true
@@ -391,6 +406,11 @@ private fun SeedGrid(words: List<String>) {
     }
 }
 
+/** Deletes a document the save dialog created when nothing could be written to it, instead of leaving it empty. */
+private fun discardDocument(context: Context, uri: Uri) {
+    runCatching { DocumentsContract.deleteDocument(context.contentResolver, uri) }
+}
+
 private fun displayName(context: Context, uri: Uri): String =
     context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
         if (c.moveToFirst()) c.getString(0) else null
@@ -416,9 +436,16 @@ fun FileCryptoScreen(onBack: () -> Unit) {
     var pendingPath by rememberSaveable { mutableStateOf<String?>(null) }
 
     val saveEncrypted = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { dest ->
-        val src = source ?: return@rememberLauncherForActivityResult
         if (dest == null) return@rememberLauncherForActivityResult
-        val secret = secretOf(useKey, password, keyHex) ?: return@rememberLauncherForActivityResult
+        val src = source
+        val secret = secretOf(useKey, password, keyHex)
+        if (src == null || secret == null) {
+            // The screen was rebuilt while the dialog was open: the file and secret are never kept in saved state.
+            secret?.wipe()
+            discardDocument(context, dest)
+            message = false to "No se ha guardado: vuelve a elegir el archivo y la contraseña o clave."
+            return@rememberLauncherForActivityResult
+        }
         busy = true
         scope.launch {
             message = try {
@@ -429,6 +456,7 @@ fun FileCryptoScreen(onBack: () -> Unit) {
                 }
                 true to "Archivo cifrado y guardado."
             } catch (e: Exception) {
+                discardDocument(context, dest) // Never leave a truncated .cpenc behind.
                 false to "No se pudo cifrar el archivo."
             } finally {
                 secret.wipe()
@@ -437,7 +465,15 @@ fun FileCryptoScreen(onBack: () -> Unit) {
         }
     }
     val saveDecrypted = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { dest ->
-        val tmp = pendingPath?.let(::File) ?: return@rememberLauncherForActivityResult
+        val tmp = pendingPath?.let(::File)?.takeIf { it.exists() } ?: run {
+            // The decrypted copy is gone (the app was restarted meanwhile): nothing to write.
+            pendingPath = null
+            if (dest != null) {
+                discardDocument(context, dest)
+                message = false to "No se ha guardado: vuelve a descifrar el archivo."
+            }
+            return@rememberLauncherForActivityResult
+        }
         scope.launch {
             message = try {
                 if (dest != null) {
@@ -449,6 +485,7 @@ fun FileCryptoScreen(onBack: () -> Unit) {
                     false to "No se ha guardado nada."
                 }
             } catch (e: Exception) {
+                dest?.let { discardDocument(context, it) }
                 false to "No se pudo guardar el archivo."
             } finally {
                 tmp.delete()
@@ -479,7 +516,7 @@ fun FileCryptoScreen(onBack: () -> Unit) {
             AlgorithmPicker(alg) { alg = it }
         }
         Button(
-            enabled = !busy && source != null && secretOf(useKey, password, keyHex) != null,
+            enabled = !busy && source != null && hasSecret(useKey, password, keyHex),
             onClick = {
                 if (encrypt) {
                     saveEncrypted.launch(sourceName + ENCRYPTED_EXTENSION)

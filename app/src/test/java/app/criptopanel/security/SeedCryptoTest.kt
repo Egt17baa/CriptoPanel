@@ -165,4 +165,29 @@ class SeedCryptoTest {
         assertNull(extractCp1("sin nada cifrado"))
         assertNull(extractCp1("CP1:"))
     }
+
+    @Test fun `the default Argon2 cost is accepted even on a phone with a small heap`() {
+        KdfParams().checkSane(heapKiB = 96L * 1024) // A 1 GB phone: its own vault must open.
+        try {
+            KdfParams(memoryKiB = 96 * 1024).checkSane(heapKiB = 96L * 1024) // A crafted, larger cost is refused.
+            fail()
+        } catch (e: CryptoFailure) {
+            // expected
+        }
+        KdfParams(memoryKiB = 96 * 1024).checkSane(heapKiB = 512L * 1024)
+    }
+
+    @Test fun `a note after the ciphertext is not glued onto it`() {
+        val key = parseRawKey(newRawKeyHex())!!
+        val token = encryptText("legal winner", Secret.RawKey(key))
+        assertEquals(token, extractCp1(token + "\nGuardado el lunes\n"))
+        assertEquals(token, extractCp1("Mi frase: $token. Ojo con ella"))
+        assertEquals(token, extractCp1(token.chunked(50).joinToString("\n") + "\nNota: en la caja fuerte"))
+    }
+
+    @Test fun `raw key check matches the parser without building the key`() {
+        listOf(newRawKeyHex(), newRawKeyHex().uppercase().replace(" ", "-"), "abc", "zz".repeat(32), "", "0".repeat(65)).forEach {
+            assertEquals(it, parseRawKey(it) != null, isRawKeyText(it))
+        }
+    }
 }

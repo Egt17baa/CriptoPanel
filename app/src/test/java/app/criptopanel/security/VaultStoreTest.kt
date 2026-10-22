@@ -161,4 +161,34 @@ class VaultStoreTest {
         assertEquals(listOf("Wallet"), (again.state.value as VaultState.Unlocked).entries.map { it.title })
         assertTrue(f.readText().contains("\"version\":2"))
     }
+
+    /** A directory where the temporary file goes makes every save fail (even for root, unlike permissions). */
+    private fun breakSaving() = File(tmp.root, "vault.bin.tmp").mkdir()
+
+    @Test fun `a full disk does not lock the user out with the right master password`() = runTest {
+        val s = store().apply { load(); create("m".toCharArray()); upsert(entry("1", "Wallet")); lock() }
+        breakSaving()
+        s.unlock("m".toCharArray())
+        assertEquals(listOf("Wallet"), (s.state.value as VaultState.Unlocked).entries.map { it.title })
+        // A real change cannot be saved: it fails loudly and nothing changes.
+        try {
+            s.delete("1")
+            fail()
+        } catch (e: java.io.IOException) {
+            // expected
+        }
+        assertEquals(1, (s.state.value as VaultState.Unlocked).entries.size)
+    }
+
+    @Test fun `a vault that could not be written is not shown as locked`() = runTest {
+        breakSaving()
+        val s = store().apply { load() }
+        try {
+            s.create("m".toCharArray())
+            fail()
+        } catch (e: java.io.IOException) {
+            // expected
+        }
+        assertEquals(VaultState.NoVault, s.state.value)
+    }
 }

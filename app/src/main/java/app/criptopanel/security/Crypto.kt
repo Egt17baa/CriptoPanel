@@ -38,12 +38,13 @@ enum class Aead(val id: Byte, val label: String, val detail: String) {
 }
 
 /** Argon2id cost; stored with every ciphertext so it can be raised later without breaking old ones. */
-data class KdfParams(val memoryKiB: Int = 64 * 1024, val iterations: Int = 3, val parallelism: Int = 1) {
-    /** Refuses absurd values from a crafted header (memory bombs). */
-    fun checkSane() {
-        // Never more than half of what this phone lets the app use: a crafted header must not crash it.
-        val heapKiB = Runtime.getRuntime().maxMemory() / 1024
-        if (memoryKiB !in 8 * parallelism..MAX_KDF_MEMORY_KIB || memoryKiB > heapKiB / 2 || iterations !in 1..10 || parallelism !in 1..4) {
+data class KdfParams(val memoryKiB: Int = DEFAULT_KDF_MEMORY_KIB, val iterations: Int = 3, val parallelism: Int = 1) {
+    /** Refuses absurd values from a crafted header (memory bombs); [heapKiB] is what this phone lets the app use. */
+    fun checkSane(heapKiB: Long = Runtime.getRuntime().maxMemory() / 1024) {
+        // Above the default cost, never more than half of what this phone lets the app use: a crafted header must not
+        // crash it. The default itself is always accepted, or a phone with a small heap could not open its own data.
+        val tooBigForHeap = memoryKiB > DEFAULT_KDF_MEMORY_KIB && memoryKiB > heapKiB / 2
+        if (memoryKiB !in 8 * parallelism..MAX_KDF_MEMORY_KIB || tooBigForHeap || iterations !in 1..10 || parallelism !in 1..4) {
             throw CryptoFailure("Parámetros de cifrado no válidos")
         }
     }
@@ -53,6 +54,8 @@ data class KdfParams(val memoryKiB: Int = 64 * 1024, val iterations: Int = 3, va
 class CryptoFailure(message: String = "Contraseña incorrecta o datos dañados") : Exception(message)
 
 const val KEY_BYTES = 32
+/** Argon2id memory used for new ciphertexts and vaults: 64 MiB. */
+const val DEFAULT_KDF_MEMORY_KIB = 64 * 1024
 /** Highest Argon2id memory a header may ask for: 2× the default (Bouncy Castle allocates it on the Java heap). */
 const val MAX_KDF_MEMORY_KIB = 128 * 1024
 const val SALT_BYTES = 16
@@ -169,6 +172,19 @@ sealed interface Secret {
 fun newRawKeyHex(random: SecureRandom = secureRandom): String =
     hex(randomBytes(KEY_BYTES, random)).lowercase().chunked(4).joinToString(" ")
 
+/** Whether [text] is a 64-hex-character key (same rules as [parseRawKey]) without building the key itself. */
+fun isRawKeyText(text: String): Boolean {
+    var digits = 0
+    for (c in text) {
+        when {
+            c.isWhitespace() || c == '-' || c == ':' -> Unit
+            c.lowercaseChar() in "0123456789abcdef" -> digits++
+            else -> return false
+        }
+    }
+    return digits == KEY_BYTES * 2
+}
+
 /** Parses a 64-hex-character key, ignoring spaces, dashes and case; null if it is not one. */
 fun parseRawKey(text: String): ByteArray? {
     val clean = text.filter { !it.isWhitespace() && it != '-' && it != ':' }
@@ -263,10 +279,19 @@ const val MAX_TEXT_FILE_BYTES = 1024 * 1024
 /** The "CP1:" ciphertext inside a text file, which may also hold other lines; null if there is none. */
 fun extractCp1(text: String): String? {
     val start = text.indexOf(TEXT_PREFIX).takeIf { it >= 0 } ?: return null
-    // Chat apps and editors may wrap it over several lines: keep each following piece that is still Base64url.
-    val body = text.substring(start + TEXT_PREFIX.length).trim().split(Regex("\\s+"))
-        .takeWhile { it.matches(Regex("[A-Za-z0-9_-]+")) }
-        .joinToString("")
+    fun isB64(c: Char) = c in 'A'..'Z' || c in 'a'..'z' || c in '0'..'9' || c == '-' || c == '_'
+    val lines = text.substring(start + TEXT_PREFIX.length).lines()
+    // On its own line the token ends at the first other character (a space, a full stop…).
+    val body = StringBuilder(lines.first().trimStart().takeWhile(::isB64))
+    // Chat apps and editors may wrap it: a following line continues it only if it is nothing but Base64url,
+    // so a note written after it ("Guardado el lunes") is never glued on.
+    if (body.length == lines.first().trim().length) {
+        for (line in lines.drop(1)) {
+            val t = line.trim()
+            if (t.isEmpty() || !t.all(::isB64)) break
+            body.append(t)
+        }
+    }
     return if (body.isEmpty()) null else TEXT_PREFIX + body
 }
 
