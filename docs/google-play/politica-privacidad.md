@@ -1,6 +1,6 @@
 # Política de privacidad de CriptoPanel
 
-*Última actualización: 21 de octubre de 2026*
+*Última actualización: 22 de octubre de 2026*
 
 CriptoPanel es una aplicación informativa sobre el mercado de criptomonedas.
 
@@ -16,7 +16,8 @@ que reciben la información técnica habitual de cualquier conexión a Internet 
 
 - CoinGecko (<https://www.coingecko.com/en/privacy>)
 - CoinLore (<https://www.coinlore.com/privacy-policy>)
-- DefiLlama (<https://defillama.com/privacy-policy>)
+- DefiLlama, también para stablecoins y rendimientos (<https://defillama.com/privacy-policy>)
+- Alternative.me, para el índice de miedo y codicia (<https://alternative.me/>)
 - TradingView, para los gráficos de índices (<https://www.tradingview.com/privacy-policy/>).
   El widget de TradingView puede usar cookies o almacenamiento local propios.
 

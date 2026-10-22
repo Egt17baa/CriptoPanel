@@ -42,6 +42,7 @@ fun tradingViewUrl(index: MarketIndex, interval: ChartInterval, dark: Boolean, t
         put("interval", interval.tvCode)
         put("timezone", timezone)
         put("theme", if (dark) "dark" else "light")
+        if (dark) put("backgroundColor", "#0B0B0D") // The app's ink, so the chart sits flush with the background.
         put("style", "1")
         put("locale", "es")
         put("hide_top_toolbar", true)

@@ -6,6 +6,8 @@ plugins {
 // Android/Compose-only files; everything else in app/src/main is compiled here.
 val androidOnly = listOf(
     "**/*Screen.kt",
+    "**/*Tab.kt",
+    "**/market/InsightCards.kt",
     "**/MainActivity.kt",
     "**/CriptoPanelApp.kt",
     "**/navigation/**",
@@ -13,6 +15,8 @@ val androidOnly = listOf(
     "**/core/ui/AutoRefresh.kt",
     "**/core/ui/StatusViews.kt",
     "**/core/ui/Theme.kt",
+    "**/core/ui/Glass.kt",
+    "**/core/ui/Scaffolds.kt",
 )
 
 sourceSets {

@@ -1,6 +1,8 @@
 # CriptoPanel
 
 App Android (Kotlin + Jetpack Compose) con el mercado cripto y un panel DeFi en un solo sitio.
+Diseño Material 3 siempre oscuro, en gris y negro, con paneles de vidrio sobre un fondo «líquido» animado
+(se queda quieto si el sistema tiene las animaciones desactivadas).
 
 ## Pantallas
 
@@ -8,12 +10,19 @@ App Android (Kotlin + Jetpack Compose) con el mercado cripto y un panel DeFi en 
   volumen y cambio en 24 h. Se refresca sola cada 60 s; tira hacia abajo para forzarlo.
   Toca TOTAL, TOTAL2, TOTAL3 o una dominancia para ver su gráfico de velas de TradingView
   (CRYPTOCAP:TOTAL, TOTAL2, TOTAL3, BTC.D, ETH.D) en 1h, 2h, 4h, 12h, 1D o 1S.
+  Debajo: índice de miedo y codicia (30 días), las que más suben y bajan en 24 h, tendencias de CoinGecko,
+  y enlaces a **Sectores** (capitalización y cambio por sector) y **Exchanges** (los 50 con más volumen).
 - **Top 100**: las 100 primeras monedas por capitalización con precio, cambio 24 h, minigráfico de 7 días;
   filtro por nombre o símbolo y orden por posición, 24 h, 7 d o volumen.
 - **Detalle de moneda**: gráfico de 24 h / 7 d / 30 d / 1 año, capitalización, volumen, máximos, oferta y descripción.
 - **Buscar** (lupa en Mercado): cualquier moneda o token de CoinGecko.
-- **DeFi**: TVL total con gráfico de un año, TVL por red (con % del total) y por protocolo.
-  Al tocar una red: su histórico de TVL y sus protocolos.
+- **DeFi**, con pestañas:
+  - **TVL**: total con gráfico de un año, TVL por red (con % del total) y por protocolo.
+    Al tocar una red: su histórico de TVL y sus protocolos.
+  - **Stablecoins**: capitalización total, cambio en 7 días y cada stablecoin (en rojo si se aleja más de un 1 % de su paridad).
+  - **DEX**: volumen en 24 h, total y por protocolo, filtrable por red.
+  - **Comisiones**: comisiones o ingresos en 24 h por protocolo, filtrables por red.
+  - **Rendimientos**: los 100 mejores pools por APY o TVL, con filtros (solo stablecoins, TVL mínimo).
 
 ## Fuentes de datos (públicas y gratuitas)
 
@@ -23,7 +32,9 @@ App Android (Kotlin + Jetpack Compose) con el mercado cripto y un panel DeFi en 
 - [CoinGecko API](https://docs.coingecko.com/reference/introduction) (`api.coingecko.com/api/v3`): Top 100 con logos
   y minigráficos, detalle de monedas, gráficos y búsqueda. Si su plan gratuito está saturado, el Top 100 usa CoinLore.
 - [TradingView](https://www.tradingview.com/widget-docs/widgets/charts/advanced-chart/): widget gratuito para los gráficos de índices.
-- [DefiLlama API](https://api-docs.defillama.com/) (`api.llama.fi`): TVL por red, histórico y protocolos (sin exchanges centralizados).
+- [DefiLlama API](https://api-docs.defillama.com/) (`api.llama.fi`, `stablecoins.llama.fi`, `yields.llama.fi`): TVL por red,
+  histórico y protocolos (sin exchanges centralizados), stablecoins, volumen de DEX, comisiones e ingresos, y rendimientos.
+- [Alternative.me](https://alternative.me/crypto/fear-and-greed-index/) (`api.alternative.me`): índice de miedo y codicia.
 
 El plan gratuito de CoinGecko limita las peticiones por minuto (y en redes móviles muchas personas comparten IP).
 La app reintenta automáticamente, recurre a CoinLore cuando puede y nunca tapa los datos con un aviso de límite.
@@ -67,6 +78,7 @@ gradle -p jvm-check test
 
 ## Estado de verificación
 
-- `./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug`: compila, 61 tests pasan, lint sin errores.
-- Las respuestas reales de CoinGecko y DefiLlama se han comprobado contra los modelos de la app.
-- Falta probarla en un móvil o emulador: instala el APK con `./gradlew installDebug` y revisa cada pantalla.
+- Versión 1.1.0: `./gradlew :app:testDebugUnitTest :app:lintRelease :app:assembleRelease` compila, 101 tests pasan
+  (también en `jvm-check`) y lint no da errores.
+- Los fixtures de las fuentes nuevas son respuestas reales de CoinGecko, DefiLlama y Alternative.me (22-10-2026), recortadas.
+- Falta probarla en un móvil o emulador, sobre todo el aspecto de vidrio líquido: instala el APK y revisa cada pantalla.

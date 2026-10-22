@@ -80,8 +80,9 @@ fun TopCoinsScreen(vm: TopCoinsViewModel, onCoin: (String) -> Unit) {
     }
 }
 
+/** One coin: rank, logo, name, 7-day sparkline, price and 24 h change. */
 @Composable
-private fun CoinRow(coin: CoinMarket, onClick: () -> Unit) {
+fun CoinRow(coin: CoinMarket, onClick: () -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),

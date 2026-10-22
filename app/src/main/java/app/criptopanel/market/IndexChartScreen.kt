@@ -17,7 +17,6 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -57,7 +56,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import app.criptopanel.core.network.AppError
+import app.criptopanel.core.ui.InkColor
 import app.criptopanel.core.ui.message
+import androidx.compose.ui.graphics.toArgb
 import java.util.TimeZone
 
 /** TradingView candles for a market index, with the app's own interval chips. */
@@ -68,7 +69,7 @@ fun IndexChartScreen(index: MarketIndex, onBack: () -> Unit) {
     var reloads by remember { mutableIntStateOf(0) }
     val context = LocalContext.current
     val failed = remember { mutableStateOf(!context.isOnline()) }
-    val dark = isSystemInDarkTheme()
+    val dark = true // The app is always dark.
     val timezone = remember { tradingViewTimezone(TimeZone.getDefault()) }
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
@@ -165,6 +166,7 @@ private fun TradingViewWebView(url: String, onLoaded: () -> Unit, onLoadError: (
             WebView(context).apply {
                 // WRAP_CONTENT (the AndroidView default) can give the page a 0 px viewport height.
                 layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+                setBackgroundColor(InkColor.toArgb()) // No white flash before the dark widget draws.
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = true
                 CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)

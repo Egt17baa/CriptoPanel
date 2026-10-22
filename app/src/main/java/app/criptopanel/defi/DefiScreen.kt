@@ -16,13 +16,15 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.PrimaryScrollableTabRow
+import androidx.compose.material3.SecondaryTabRow
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -30,57 +32,87 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import app.criptopanel.core.format.formatCompactUsd
 import app.criptopanel.core.format.formatPercent
 import app.criptopanel.core.ui.AutoRefresh
 import app.criptopanel.core.ui.LineChart
+import app.criptopanel.core.ui.LoaderViewModel
 import app.criptopanel.core.ui.StateContent
 import app.criptopanel.core.ui.changeColor
 import coil3.compose.AsyncImage
 
-private val tabTitles = listOf("Redes", "Protocolos")
+private val tvlTabs = listOf("Redes", "Protocolos")
+
+private enum class DefiSection(val title: String) {
+    TVL("TVL"), STABLECOINS("Stablecoins"), DEX("DEX"), FEES("Comisiones"), YIELDS("Rendimientos"),
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DefiScreen(vm: DefiViewModel, onChain: (String) -> Unit) {
-    val state by vm.state.collectAsStateWithLifecycle()
-    var tab by rememberSaveable { mutableIntStateOf(0) }
-    AutoRefresh { vm.refresh() }
+fun DefiScreen(vm: DefiViewModel, extras: DefiExtrasRepository, onChain: (String) -> Unit, onCoin: (String) -> Unit) {
+    var section by rememberSaveable { mutableStateOf(DefiSection.TVL) }
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = { TopAppBar(title = { Text("DeFi") }) },
     ) { padding ->
-        StateContent(state, onRefresh = { vm.refresh(force = true) }, modifier = Modifier.padding(padding)) { overview ->
-            LazyColumn {
-                item {
-                    Column(Modifier.padding(12.dp)) {
-                        Text("TVL DeFi total", style = MaterialTheme.typography.labelMedium)
-                        Text(formatCompactUsd(overview.totalTvl), style = MaterialTheme.typography.headlineSmall)
-                        LineChart(
-                            points = overview.history.takeLast(365).map { it.tvl },
-                            modifier = Modifier.fillMaxWidth().height(160.dp).padding(top = 8.dp),
-                            color = MaterialTheme.colorScheme.primary,
-                            fill = true,
-                        )
+        Column(Modifier.padding(padding)) {
+            PrimaryScrollableTabRow(selectedTabIndex = section.ordinal, edgePadding = 12.dp) {
+                DefiSection.entries.forEach { s ->
+                    Tab(selected = section == s, onClick = { section = s }, text = { Text(s.title) })
+                }
+            }
+            // Each section's ViewModel is created, and loads, the first time the section is opened.
+            when (section) {
+                DefiSection.TVL -> TvlSection(vm, onChain)
+                DefiSection.STABLECOINS -> StablecoinsTab(
+                    viewModel(key = "stablecoins") { LoaderViewModel { extras.stablecoins(it) } },
+                    onCoin,
+                )
+                DefiSection.DEX -> VolumeTab(extras, listOf(VolumeKind.DEX))
+                DefiSection.FEES -> VolumeTab(extras, listOf(VolumeKind.FEES, VolumeKind.REVENUE))
+                DefiSection.YIELDS -> YieldsTab(viewModel(key = "yields") { LoaderViewModel { extras.pools(it) } })
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TvlSection(vm: DefiViewModel, onChain: (String) -> Unit) {
+    val state by vm.state.collectAsStateWithLifecycle()
+    var tab by rememberSaveable { mutableIntStateOf(0) }
+    AutoRefresh { vm.refresh() }
+    StateContent(state, onRefresh = { vm.refresh(force = true) }) { overview ->
+        LazyColumn {
+            item {
+                Column(Modifier.padding(12.dp)) {
+                    Text("TVL DeFi total", style = MaterialTheme.typography.labelMedium)
+                    Text(formatCompactUsd(overview.totalTvl), style = MaterialTheme.typography.headlineSmall)
+                    LineChart(
+                        points = overview.history.takeLast(365).map { it.tvl },
+                        modifier = Modifier.fillMaxWidth().height(160.dp).padding(top = 8.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        fill = true,
+                    )
+                }
+            }
+            item {
+                SecondaryTabRow(selectedTabIndex = tab) {
+                    tvlTabs.forEachIndexed { i, title ->
+                        Tab(selected = tab == i, onClick = { tab = i }, text = { Text(title) })
                     }
                 }
-                item {
-                    TabRow(selectedTabIndex = tab) {
-                        tabTitles.forEachIndexed { i, title ->
-                            Tab(selected = tab == i, onClick = { tab = i }, text = { Text(title) })
-                        }
-                    }
+            }
+            if (tab == 0) {
+                itemsIndexed(overview.chains, key = { _, c -> "chain-${c.name}" }) { i, chain ->
+                    ChainRow(i + 1, chain, onClick = { onChain(chain.name) })
+                    HorizontalDivider()
                 }
-                if (tab == 0) {
-                    itemsIndexed(overview.chains, key = { _, c -> "chain-${c.name}" }) { i, chain ->
-                        ChainRow(i + 1, chain, onClick = { onChain(chain.name) })
-                        HorizontalDivider()
-                    }
-                } else {
-                    itemsIndexed(overview.protocols, key = { _, p -> "protocol-${p.slug}" }) { i, protocol ->
-                        ProtocolRow(i + 1, protocol, protocol.tvl)
-                        HorizontalDivider()
-                    }
+            } else {
+                itemsIndexed(overview.protocols, key = { _, p -> "protocol-${p.slug}" }) { i, protocol ->
+                    ProtocolRow(i + 1, protocol, protocol.tvl)
+                    HorizontalDivider()
                 }
             }
         }

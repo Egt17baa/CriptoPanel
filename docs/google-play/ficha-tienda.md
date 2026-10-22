@@ -3,7 +3,7 @@
 **Nombre de la app** (máx. 30): CriptoPanel
 
 **Descripción breve** (máx. 80):
-TOTAL2, TOTAL3, dominancia BTC, Top 100 y DeFi (TVL) en un solo panel.
+TOTAL2, TOTAL3, miedo y codicia, Top 100, stablecoins y DeFi en un solo panel.
 
 **Descripción completa** (máx. 4000):
 
@@ -14,6 +14,9 @@ CriptoPanel reúne en una sola app todo lo que necesitas para seguir el mercado 
 • Dominancia de Bitcoin y de Ethereum
 • Volumen y cambio en 24 h, actualizados cada minuto
 • Gráficos de velas de TradingView para TOTAL, TOTAL2, TOTAL3, BTC.D y ETH.D en 1h, 2h, 4h, 12h, 1D y 1S
+• Índice de miedo y codicia con su evolución de 30 días
+• Las que más suben y más bajan en 24 h, y las monedas en tendencia
+• Sectores (IA, memes, capa 2, RWA…) y los 50 exchanges con más volumen
 
 🏆 TOP 100
 • Las 100 criptomonedas con mayor capitalización
@@ -27,8 +30,14 @@ CriptoPanel reúne en una sola app todo lo que necesitas para seguir el mercado 
 • TVL total de DeFi con su histórico
 • TVL de cada red (Ethereum, Solana, BSC, Base…) y su peso en el total
 • Ranking de protocolos y protocolos de cada red
+• Stablecoins: capitalización total, cada stablecoin y aviso si pierde la paridad
+• Volumen de los DEX, comisiones e ingresos de los protocolos, por red
+• Rendimientos (APY) de los mejores pools, con filtros de TVL y solo stablecoins
 
-Datos de fuentes públicas: CoinGecko, CoinLore, DefiLlama y TradingView.
+✨ DISEÑO
+• Material Design en gris y negro con paneles de vidrio sobre un fondo líquido en movimiento
+
+Datos de fuentes públicas: CoinGecko, CoinLore, DefiLlama, Alternative.me y TradingView.
 
 CriptoPanel es una herramienta informativa: no permite comprar ni vender criptomonedas y no es asesoramiento financiero.
 
