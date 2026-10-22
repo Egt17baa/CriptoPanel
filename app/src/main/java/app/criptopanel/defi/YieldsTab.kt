@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -54,9 +55,9 @@ fun YieldsTab(vm: LoaderViewModel<List<Pool>>) {
             modifier = Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp),
         ) {
             FilterChip(selected = stableOnly, onClick = { stableOnly = !stableOnly }, label = { Text("Solo stablecoins") })
-            VerticalDivider(Modifier.padding(vertical = 12.dp).width(1.dp))
+            VerticalDivider(Modifier.height(24.dp)) // A fixed height: the default fillMaxHeight would stretch the chip row over the whole tab.
             MinTvl.entries.forEach { m -> FilterChip(selected = minTvl == m, onClick = { minTvl = m }, label = { Text(m.label) }) }
-            VerticalDivider(Modifier.padding(vertical = 12.dp).width(1.dp))
+            VerticalDivider(Modifier.height(24.dp))
             PoolSort.entries.forEach { s -> FilterChip(selected = sort == s, onClick = { sort = s }, label = { Text("Por ${s.label}") }) }
         }
         Text(
