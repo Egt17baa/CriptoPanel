@@ -78,7 +78,7 @@ private fun AlgorithmPicker(alg: Aead, onChange: (Aead) -> Unit) {
     }
 }
 
-/** Password (stretched with Argon2id) or a random AES-256 key the user keeps elsewhere, as in Secret Space Encryptor. */
+/** Password (stretched with Argon2id) or a random AES-256 key the user keeps elsewhere and never the fingerprint. */
 @Composable
 private fun SecretInput(
     useKey: Boolean,

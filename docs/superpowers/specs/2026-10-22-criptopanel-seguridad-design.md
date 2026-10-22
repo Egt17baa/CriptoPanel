@@ -73,7 +73,7 @@ La cabecera entera va como datos asociados (AAD): no se puede alterar sin que el
 
 ## Fase C (1.9.0): frases semilla, más algoritmos y clave propia
 
-Petición del usuario: cifrar las 12 o 24 palabras de una wallet «como Secret Space Encryptor», con una clave que guarda él y **sin huella**.
+Petición del usuario: cifrar las 12 o 24 palabras de una wallet con una clave que guarda él y **sin huella**.
 
 - **Modo frase semilla** en Cifrar texto: autocompletado con la lista BIP-39 inglesa (2.048 palabras), aviso de palabras que no existen con sugerencia (prefijo único de 4 letras o una letra de diferencia), recuento y **checksum BIP-39** (SHA-256). Al descifrar, si el resultado es una frase válida se muestra numerada en columnas.
 - **Algoritmos** (todos con 256 bits y cifrado autenticado):
@@ -90,6 +90,7 @@ Petición del usuario: cifrar las 12 o 24 palabras de una wallet «como Secret S
 - **Secreto:** contraseña (KDF 1 = Argon2id) o **clave AES-256 aleatoria** (KDF 2 = clave directa, sin sal útil ni derivación). La clave se muestra como 64 caracteres hexadecimales en grupos de 4; al pegarla se ignoran espacios y mayúsculas. Si se intenta descifrar con el tipo de secreto equivocado, el mensaje lo dice.
 - **Descifrar** lee la cabecera y avisa del algoritmo y de si hace falta clave o contraseña.
 - Los archivos `.cpenc` admiten los mismos algoritmos y secretos; cada registro lleva la sobrecarga de su algoritmo.
+- **Independencia:** solo se usan algoritmos públicos y libres de patentes (AES, ChaCha20, Twofish, Serpent y Camellia), implementados por `javax.crypto` y Bouncy Castle (licencia MIT). No hay código, formato, nombre ni diseño de ninguna otra app; el formato `CP1` es propio.
 - **Pruebas:** vectores de Camellia (RFC 3713) y Twofish; ida y vuelta de texto y archivos con cada algoritmo y cada tipo de secreto; secreto equivocado y manipulación; checksums BIP-39 conocidos y sugerencias.
 
 ## Avisos

@@ -122,6 +122,8 @@ val SOURCES = listOf(
     Source("BCE vía Frankfurter", "Tipo de cambio euro/dólar, de hoy y de días pasados, para ver la app en euros.", "https://frankfurter.dev"),
     Source("Have I Been Pwned", "Comprobar si una contraseña aparece en filtraciones (solo se envían 5 caracteres de su huella).", "https://haveibeenpwned.com/Passwords"),
     Source("EFF", "Lista de 7.776 palabras para generar frases de contraseña (CC BY 3.0).", "https://www.eff.org/dice"),
+    Source("Bouncy Castle", "Librería de criptografía (Argon2id, ChaCha20, Twofish, Serpent, Camellia). © Legion of the Bouncy Castle Inc., licencia MIT.", "https://www.bouncycastle.org/about/license/"),
+    Source("BIP-39", "Lista oficial de 2.048 palabras de las frases semilla (repositorio bitcoin/bips, licencia BSD-2-Clause).", "https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki"),
     Source("TradingView", "Gráficos de velas de TOTAL, TOTAL2, TOTAL3 y dominancias.", "https://www.tradingview.com/widget-docs/"),
 )
 
