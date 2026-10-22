@@ -1,0 +1,158 @@
+package app.criptopanel.security
+
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
+
+sealed interface VaultState {
+    data object Loading : VaultState
+    data object NoVault : VaultState
+    data object Locked : VaultState
+    data class Unlocked(val entries: List<VaultEntry>) : VaultState
+}
+
+/** Biometric unlock refused because the master password was not typed for [MASTER_RECHECK_MS]. */
+class MasterRequired : Exception("Escribe tu contraseña maestra (se pide cada 7 días)")
+
+/**
+ * The password vault on disk (files/vault/vault.bin, never in Android backups) and its unlocked state.
+ * The data key only lives in memory while unlocked and is wiped on [lock].
+ */
+class VaultStore(
+    private val file: File,
+    private val io: CoroutineDispatcher = Dispatchers.IO,
+    private val compute: CoroutineDispatcher = Dispatchers.Default,
+    private val now: () -> Long = System::currentTimeMillis,
+    private val kdf: KdfParams = KdfParams(),
+) {
+    private val _state = MutableStateFlow<VaultState>(VaultState.Loading)
+    val state: StateFlow<VaultState> = _state.asStateFlow()
+
+    private val mutex = Mutex()
+    private var vault: VaultFile? = null
+    private var dek: ByteArray? = null
+    private var lastUse = 0L
+
+    suspend fun load() = mutex.withLock {
+        if (_state.value != VaultState.Loading) return@withLock
+        vault = withContext(io) { if (file.exists()) runCatching { VaultCrypto.decodeFile(file.readText()) }.getOrNull() else null }
+        _state.value = if (vault == null) VaultState.NoVault else VaultState.Locked
+    }
+
+    private suspend fun save(v: VaultFile) = withContext(io) {
+        file.parentFile?.mkdirs()
+        val tmp = File(file.path + ".tmp")
+        tmp.writeText(VaultCrypto.encodeFile(v))
+        Files.move(tmp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+    }
+
+    private fun opened(v: VaultFile, key: ByteArray) {
+        vault = v
+        // Wipe the previous key, unless it is this very array (saving a change keeps the same key).
+        if (dek !== key) dek?.fill(0)
+        dek = key
+        lastUse = now()
+        _state.value = VaultState.Unlocked(VaultCrypto.read(v, key).sortedBy { it.title.lowercase() })
+    }
+
+    suspend fun create(master: CharArray) = mutex.withLock {
+        val (v, key) = withContext(compute) { VaultCrypto.create(master, now(), kdf) }
+        save(v)
+        opened(v, key)
+    }
+
+    /** Throws [CryptoFailure] for a wrong password. */
+    suspend fun unlock(master: CharArray) = mutex.withLock {
+        val v = vault ?: return@withLock
+        val key = withContext(compute) { VaultCrypto.unlock(v, master) }
+        val checked = v.copy(masterCheckedAt = now())
+        save(checked)
+        opened(checked, key)
+    }
+
+    val biometricAllowed: Boolean get() = vault?.let { now() - it.masterCheckedAt < MASTER_RECHECK_MS } ?: false
+
+    /** With a data key released by the biometric prompt. Throws [MasterRequired] when the 7-day recheck is due. */
+    suspend fun unlockWithKey(key: ByteArray) = mutex.withLock {
+        val v = vault ?: return@withLock
+        if (!biometricAllowed) {
+            key.fill(0)
+            throw MasterRequired()
+        }
+        opened(v, key)
+    }
+
+    /** A copy of the open data key, to wrap it with the biometric key; null while locked. */
+    fun dataKeyCopy(): ByteArray? = dek?.copyOf()
+
+    fun lock() {
+        dek?.fill(0)
+        dek = null
+        if (vault != null && _state.value is VaultState.Unlocked) _state.value = VaultState.Locked
+    }
+
+    fun touch() {
+        lastUse = now()
+    }
+
+    /** Locks when unused for [VAULT_IDLE_LOCK_MS]; returns true if it locked. */
+    fun lockIfIdle(): Boolean {
+        if (dek != null && now() - lastUse >= VAULT_IDLE_LOCK_MS) {
+            lock()
+            return true
+        }
+        return false
+    }
+
+    private suspend fun modify(change: (List<VaultEntry>) -> List<VaultEntry>) = mutex.withLock {
+        val v = vault ?: return@withLock
+        val key = dek ?: return@withLock
+        val current = (_state.value as? VaultState.Unlocked)?.entries ?: return@withLock
+        val next = withContext(compute) { VaultCrypto.write(v, key, change(current)) }
+        save(next)
+        opened(next, key)
+    }
+
+    suspend fun upsert(entry: VaultEntry) = modify { list ->
+        if (list.any { it.id == entry.id }) list.map { if (it.id == entry.id) entry else it } else list + entry
+    }
+
+    suspend fun delete(id: String) = modify { list -> list.filterNot { it.id == id } }
+
+    suspend fun changeMaster(newMaster: CharArray) = mutex.withLock {
+        val v = vault ?: return@withLock
+        val key = dek ?: return@withLock
+        val next = withContext(compute) { VaultCrypto.changeMaster(v, key, newMaster, now(), kdf) }
+        save(next)
+        opened(next, key)
+    }
+
+    /** The encrypted vault as stored; safe to put anywhere (useless without the master password). */
+    suspend fun exportText(): String? = mutex.withLock { vault?.let(VaultCrypto::encodeFile) }
+
+    /** Replaces this vault with an exported one after checking its master password. Throws [CryptoFailure]. */
+    suspend fun importReplace(text: String, master: CharArray) = mutex.withLock {
+        val incoming = VaultCrypto.decodeFile(text)
+        val key = withContext(compute) { VaultCrypto.unlock(incoming, master) }
+        val checked = incoming.copy(masterCheckedAt = now())
+        VaultCrypto.read(checked, key) // Validates the data before replacing anything.
+        save(checked)
+        opened(checked, key)
+    }
+
+    /** Deletes the vault for good (forgotten master password). */
+    suspend fun destroy() = mutex.withLock {
+        lock()
+        withContext(io) { file.delete() }
+        vault = null
+        _state.value = VaultState.NoVault
+    }
+}
