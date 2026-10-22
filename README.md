@@ -16,6 +16,10 @@ Diseño Material 3 siempre oscuro, en gris y negro, con paneles de vidrio sobre 
   filtro por nombre o símbolo y orden por posición, 24 h, 7 d o volumen.
 - **Detalle de moneda**: gráfico de 24 h / 7 d / 30 d / 1 año, capitalización, volumen, máximos, oferta y descripción.
 - **Buscar** (lupa en Mercado): cualquier moneda o token de CoinGecko.
+- **Cartera**: apunta compras y ventas (cantidad, precio, fecha, comisión y nota) y ve el valor total, la ganancia
+  o pérdida por precio medio, el cambio de hoy, la evolución (7 d, 30 d, 1 año), el reparto y el historial.
+  Exporta e importa en CSV. En **Favoritos** están las monedas marcadas con la ☆ en su detalle.
+  Todo se guarda solo en el móvil (`files/portfolio.json`, incluido en la copia de seguridad de Android).
 - **DeFi**, con pestañas:
   - **TVL**: total con gráfico de un año, TVL por red (con % del total) y por protocolo.
     Al tocar una red: su histórico de TVL y sus protocolos.
@@ -78,7 +82,7 @@ gradle -p jvm-check test
 
 ## Estado de verificación
 
-- Versión 1.1.0: `./gradlew :app:testDebugUnitTest :app:lintRelease :app:assembleRelease` compila, 101 tests pasan
+- Versión 1.2.0: `./gradlew :app:testDebugUnitTest :app:lintRelease :app:assembleRelease` compila, 141 tests pasan
   (también en `jvm-check`) y lint no da errores.
 - Los fixtures de las fuentes nuevas son respuestas reales de CoinGecko, DefiLlama y Alternative.me (22-10-2026), recortadas.
 - Falta probarla en un móvil o emulador, sobre todo el aspecto de vidrio líquido: instala el APK y revisa cada pantalla.

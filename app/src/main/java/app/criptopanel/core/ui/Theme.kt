@@ -15,6 +15,9 @@ private val TextColor = Color(0xFFECECEE)
 private val SecondaryTextColor = Color(0xFFB4B5BB)
 private val SilverColor = Color(0xFFD7DAE0)
 
+/** Menus, dialogs and pickers float over lists: they need an opaque surface to stay readable. */
+val MenuColor = Color(0xFF1F2024)
+
 /** Glass panel fill: never above 8 % white, or secondary text loses contrast. */
 val GlassFill = Color.White.copy(alpha = 0.075f)
 

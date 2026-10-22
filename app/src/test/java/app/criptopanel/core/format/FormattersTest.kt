@@ -41,4 +41,15 @@ class FormattersTest {
         assertEquals("999,99 K", formatCompact(999_994.0, es))
         assertEquals("1,00 T", formatCompact(999_999_999_999.0, es))
     }
+
+    @Test fun `quantity trims zeros and keeps 8 decimals`() {
+        assertEquals("0,12345678", formatQuantity(0.123456781, es))
+        assertEquals("1.500", formatQuantity(1500.0, es))
+        assertEquals("—", formatQuantity(null, es))
+    }
+
+    @Test fun `signed usd`() {
+        assertEquals("+1.204,10 $", formatSignedUsd(1204.1, es))
+        assertEquals("-3,00 $", formatSignedUsd(-3.0, es))
+    }
 }

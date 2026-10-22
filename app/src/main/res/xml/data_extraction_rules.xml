@@ -1,18 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The app stores no user data; nothing to back up or transfer. -->
+<!-- Android 12+: only the portfolio (operations and favourites) is backed up or moved to a new phone. -->
 <data-extraction-rules>
     <cloud-backup>
-        <exclude domain="root" />
-        <exclude domain="file" />
-        <exclude domain="database" />
-        <exclude domain="sharedpref" />
-        <exclude domain="external" />
+        <include domain="file" path="portfolio.json" />
     </cloud-backup>
     <device-transfer>
-        <exclude domain="root" />
-        <exclude domain="file" />
-        <exclude domain="database" />
-        <exclude domain="sharedpref" />
-        <exclude domain="external" />
+        <include domain="file" path="portfolio.json" />
     </device-transfer>
 </data-extraction-rules>

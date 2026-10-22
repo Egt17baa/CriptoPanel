@@ -56,7 +56,7 @@ private fun number(text: String): Double? = text.trim().replace(',', '.').toDoub
 
 /** Validates the whole file first: any bad row means nothing is imported. */
 fun parseCsv(text: String, existingIds: Set<String>): CsvImport {
-    val lines = text.removePrefix("﻿").lines()
+    val lines = text.removePrefix("\uFEFF").lines()
     val header = lines.firstOrNull()?.let(::splitRecord)?.map { it.trim().lowercase() }
     if (header == null || header.take(HEADER.size - 1) != HEADER.dropLast(1)) {
         return CsvImport.Error(1, "La cabecera no es la de un CSV exportado por CriptoPanel")

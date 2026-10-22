@@ -56,12 +56,14 @@ class PortfolioViewModel(private val store: PortfolioStore, private val market: 
     private fun trackedIds(d: PortfolioData): List<String> =
         (positions(d.operations).filter { it.isOpen }.map { it.coinId } + d.favorites).distinct()
 
-    fun refresh(force: Boolean = false) {
+    /** Pull to refresh: prices and the value history. */
+    fun refreshAll(force: Boolean = true) {
         refreshPrices(force)
         loadSeries(force)
     }
 
-    private fun refreshPrices(force: Boolean) {
+    /** Prices only: cheap enough for the 60 s auto-refresh (one request), unlike the history (one per coin). */
+    fun refreshPrices(force: Boolean = false) {
         val ids = trackedIds(data.value)
         _prices.update { it.loading() }
         pricesJob?.cancel()

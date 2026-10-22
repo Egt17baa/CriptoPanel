@@ -1,6 +1,6 @@
 # Política de privacidad de CriptoPanel
 
-*Última actualización: 22 de octubre de 2026*
+*Última actualización: 22 de octubre de 2026 (versión 1.2.0)*
 
 CriptoPanel es una aplicación informativa sobre el mercado de criptomonedas.
 
@@ -8,6 +8,13 @@ CriptoPanel es una aplicación informativa sobre el mercado de criptomonedas.
 
 **Ninguno.** CriptoPanel no tiene cuentas de usuario, no pide datos personales, no guarda información
 en servidores propios y no incluye herramientas de analítica ni publicidad.
+
+## Datos que guardas en tu dispositivo
+
+Las operaciones de tu cartera y tus monedas favoritas se guardan **solo en tu dispositivo**, en el
+almacenamiento privado de la app. No se envían a ningún servidor de CriptoPanel. Si tienes activada la
+copia de seguridad de Google en Android, ese archivo puede incluirse en tu copia, que gestiona Google
+con tu cuenta. Puedes exportarlo o importarlo tú mismo en CSV; al desinstalar la app se borra.
 
 ## Conexiones a servicios de terceros
 

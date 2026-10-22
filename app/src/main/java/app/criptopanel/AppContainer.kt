@@ -18,9 +18,14 @@ import app.criptopanel.market.CoinLoreApi
 import app.criptopanel.market.MarketInsightsRepository
 import app.criptopanel.market.MarketRepository
 import app.criptopanel.market.SentimentApi
+import app.criptopanel.portfolio.PortfolioStore
+import java.io.File
+
+/** Also named in res/xml/backup_rules.xml and data_extraction_rules.xml. */
+const val PORTFOLIO_FILE = "portfolio.json"
 
 /** Manual dependency graph, one per process. */
-class AppContainer(demoKey: String) {
+class AppContainer(demoKey: String, filesDir: File) {
     private val client = okHttpClient(demoKey)
     private val coinGecko = retrofit(COINGECKO_BASE_URL, client).create(CoinGeckoApi::class.java)
     private val defiLlama = retrofit(DEFILLAMA_BASE_URL, client).create(DefiLlamaApi::class.java)
@@ -35,6 +40,9 @@ class AppContainer(demoKey: String) {
         retrofit(ALTERNATIVE_BASE_URL, client).create(SentimentApi::class.java),
         marketRepository,
     )
+
+    /** Portfolio and favourites; the only data the app keeps (and backs up). */
+    val portfolioStore = PortfolioStore(File(filesDir, PORTFOLIO_FILE))
 
     val defiRepository = DefiRepository(defiLlama)
 

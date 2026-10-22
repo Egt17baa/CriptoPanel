@@ -43,3 +43,15 @@ fun formatPercent(value: Double?, locale: Locale = Locale.getDefault()): String 
     if (value == null || value.isNaN()) return DASH
     return "${twoDecimals(locale, "+#,##0.00;-#,##0.00").format(value)} %"
 }
+
+/** Coin amounts: up to 8 decimals, no trailing zeros, e.g. "0,12345678" or "1.500". */
+fun formatQuantity(value: Double?, locale: Locale = Locale.getDefault()): String {
+    if (value == null || value.isNaN()) return DASH
+    return DecimalFormat("#,##0.########", DecimalFormatSymbols.getInstance(locale)).format(value)
+}
+
+/** Signed USD amount, e.g. "+1.204,10 $"; for profits and losses. */
+fun formatSignedUsd(value: Double?, locale: Locale = Locale.getDefault()): String {
+    if (value == null || value.isNaN()) return DASH
+    return "${twoDecimals(locale, "+#,##0.00;-#,##0.00").format(value)} $"
+}

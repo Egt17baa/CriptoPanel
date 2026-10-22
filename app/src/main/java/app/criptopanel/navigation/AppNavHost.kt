@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.AccountBox
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Icon
@@ -48,6 +49,17 @@ import app.criptopanel.market.OverviewScreen
 import app.criptopanel.market.OverviewViewModel
 import app.criptopanel.search.SearchScreen
 import app.criptopanel.search.SearchViewModel
+import kotlinx.coroutines.launch
+import app.criptopanel.portfolio.PortfolioViewModel
+import app.criptopanel.portfolio.PortfolioScreen
+import app.criptopanel.portfolio.OperationViewModel
+import app.criptopanel.portfolio.OperationScreen
+import app.criptopanel.portfolio.HistoryScreen
+import androidx.navigation.navArgument
+import androidx.navigation.NavType
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.LaunchedEffect
 
 private data class Tab(val route: String, val label: String, val icon: ImageVector)
 
@@ -55,6 +67,7 @@ private val tabs = listOf(
     Tab("market", "Mercado", Icons.Default.Home),
     Tab("top", "Top 100", Icons.AutoMirrored.Filled.List),
     Tab("defi", "DeFi", Icons.Default.Lock),
+    Tab("portfolio", "Cartera", Icons.Default.AccountBox),
 )
 
 @Composable
@@ -68,6 +81,13 @@ fun AppNavHost() {
     val currentRoute = backStack?.destination?.route
     val insights = container.marketInsights
     val onCoin: (String) -> Unit = { id -> nav.navigate("coin/${Uri.encode(id)}") }
+    val store = container.portfolioStore
+    val portfolio by store.data.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(store) { store.load() }
+    val onAddOperation: (String?) -> Unit = { coinId ->
+        nav.navigate(if (coinId == null) "operation" else "operation?coinId=${Uri.encode(coinId)}")
+    }
 
     Box(Modifier.fillMaxSize()) {
         LiquidBackground()
@@ -154,6 +174,45 @@ fun AppNavHost() {
                     val id = entry.arguments?.getString("id").orEmpty()
                     CoinDetailScreen(
                         vm = viewModel(key = "coin-$id") { CoinDetailViewModel(id, container.marketRepository) },
+                        isFavorite = id in portfolio.favorites,
+                        onToggleFavorite = { scope.launch { store.toggleFavorite(id) } },
+                        onAddOperation = { onAddOperation(id) },
+                        onBack = { nav.popBackStack() },
+                    )
+                }
+                composable("portfolio") {
+                    PortfolioScreen(
+                        vm = viewModel { PortfolioViewModel(store, container.marketRepository) },
+                        store = store,
+                        onCoin = onCoin,
+                        onAddOperation = { onAddOperation(null) },
+                        onHistory = { coinId -> nav.navigate(if (coinId == null) "history" else "history?coinId=${Uri.encode(coinId)}") },
+                    )
+                }
+                composable(
+                    "operation?coinId={coinId}&id={id}",
+                    arguments = listOf(
+                        navArgument("coinId") { type = NavType.StringType; nullable = true; defaultValue = null },
+                        navArgument("id") { type = NavType.StringType; nullable = true; defaultValue = null },
+                    ),
+                ) { entry ->
+                    val coinId = entry.arguments?.getString("coinId")
+                    val editId = entry.arguments?.getString("id")
+                    OperationScreen(
+                        vm = viewModel { OperationViewModel(store, container.marketRepository, editId, coinId) },
+                        search = viewModel(key = "operation-search") { SearchViewModel(container.marketRepository) },
+                        onDone = { nav.popBackStack() },
+                    )
+                }
+                composable(
+                    "history?coinId={coinId}",
+                    arguments = listOf(navArgument("coinId") { type = NavType.StringType; nullable = true; defaultValue = null }),
+                ) { entry ->
+                    HistoryScreen(
+                        store = store,
+                        initialCoinId = entry.arguments?.getString("coinId"),
+                        onEdit = { opId -> nav.navigate("operation?id=${Uri.encode(opId)}") },
+                        onAdd = onAddOperation,
                         onBack = { nav.popBackStack() },
                     )
                 }
