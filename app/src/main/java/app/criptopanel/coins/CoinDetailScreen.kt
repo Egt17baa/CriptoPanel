@@ -49,6 +49,7 @@ import coil3.compose.AsyncImage
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Notifications
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,6 +58,7 @@ fun CoinDetailScreen(
     isFavorite: Boolean,
     onToggleFavorite: () -> Unit,
     onAddOperation: () -> Unit,
+    onAddAlert: () -> Unit,
     onBack: () -> Unit,
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
@@ -71,6 +73,7 @@ fun CoinDetailScreen(
                     IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Atrás") }
                 },
                 actions = {
+                    IconButton(onClick = onAddAlert) { Icon(Icons.Default.Notifications, contentDescription = "Crear alerta") }
                     IconButton(onClick = onAddOperation) { Icon(Icons.Default.Add, contentDescription = "Añadir operación") }
                     // A character: material-icons-core has no outlined star.
                     IconButton(onClick = onToggleFavorite) {

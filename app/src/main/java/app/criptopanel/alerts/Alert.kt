@@ -65,3 +65,30 @@ fun Alert.describe(formatUsd: (Double) -> String, formatPct: (Double) -> String)
         AlertKind.PORTFOLIO_CHANGE_TODAY -> "$who ${directionWord(direction)} un ${formatPct(threshold)} hoy"
     }
 }
+
+/** Why [threshold] makes no sense against the current price or value, or null if it is fine. */
+fun thresholdProblem(kind: AlertKind, threshold: Double, current: Double?): String? {
+    val percent = kind == AlertKind.CHANGE_WINDOW || kind == AlertKind.CHANGE_24H || kind == AlertKind.PORTFOLIO_CHANGE_TODAY
+    if (percent) return if (threshold < 0.1 || threshold > 1_000) "El porcentaje debe estar entre 0,1 y 1.000" else null
+    if (threshold <= 0) return "El valor debe ser mayor que 0"
+    if (current == null) return null
+    return when (kind) {
+        AlertKind.PRICE_ABOVE, AlertKind.PORTFOLIO_ABOVE -> if (current >= threshold) "Ya está por encima de ese valor" else null
+        AlertKind.PRICE_BELOW, AlertKind.PORTFOLIO_BELOW -> if (current <= threshold) "Ya está por debajo de ese valor" else null
+        else -> null
+    }
+}
+
+val AlertKind.isPercent: Boolean
+    get() = this == AlertKind.CHANGE_WINDOW || this == AlertKind.CHANGE_24H || this == AlertKind.PORTFOLIO_CHANGE_TODAY
+
+val AlertKind.label: String
+    get() = when (this) {
+        AlertKind.PRICE_ABOVE -> "Precio sube de"
+        AlertKind.PRICE_BELOW -> "Precio baja de"
+        AlertKind.CHANGE_WINDOW -> "Cambio rápido"
+        AlertKind.CHANGE_24H -> "Cambio en 24 h"
+        AlertKind.PORTFOLIO_ABOVE -> "Valor sube de"
+        AlertKind.PORTFOLIO_BELOW -> "Valor baja de"
+        AlertKind.PORTFOLIO_CHANGE_TODAY -> "Cambio hoy"
+    }

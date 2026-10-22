@@ -60,6 +60,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.criptopanel.alerts.AlertsSection
+import app.criptopanel.alerts.AlertsViewModel
 import app.criptopanel.coins.ChartRange
 import app.criptopanel.coins.CoinRow
 import app.criptopanel.core.format.formatPercent
@@ -90,9 +92,13 @@ fun PortfolioScreen(
     onCoin: (String) -> Unit,
     onAddOperation: () -> Unit,
     onHistory: (coinId: String?) -> Unit,
+    alerts: AlertsViewModel,
+    onAddAlert: () -> Unit,
+    onEditAlert: (String) -> Unit,
+    initialTab: Int = 0,
 ) {
     val data by vm.data.collectAsStateWithLifecycle()
-    var tab by rememberSaveable { mutableIntStateOf(0) }
+    var tab by rememberSaveable(initialTab) { mutableIntStateOf(initialTab) }
     var menu by remember { mutableStateOf(false) }
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -128,11 +134,16 @@ fun PortfolioScreen(
             )
         },
         floatingActionButton = {
-            if (tab == 0) {
-                ExtendedFloatingActionButton(
+            when (tab) {
+                0 -> ExtendedFloatingActionButton(
                     onClick = onAddOperation,
                     icon = { Icon(Icons.Default.Add, contentDescription = null) },
                     text = { Text("Operación") },
+                )
+                2 -> ExtendedFloatingActionButton(
+                    onClick = onAddAlert,
+                    icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                    text = { Text("Alerta") },
                 )
             }
         },
@@ -141,15 +152,12 @@ fun PortfolioScreen(
             PrimaryTabRow(selectedTabIndex = tab) {
                 Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("Cartera") })
                 Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("Favoritos") })
+                Tab(selected = tab == 2, onClick = { tab = 2 }, text = { Text("Alertas") })
             }
-            if (tab == 0) {
-                if (data.operations.isEmpty()) {
-                    EmptyPortfolio(onAddOperation)
-                } else {
-                    PortfolioContent(vm, onHistory)
-                }
-            } else {
-                Favorites(vm, onCoin)
+            when (tab) {
+                0 -> if (data.operations.isEmpty()) EmptyPortfolio(onAddOperation) else PortfolioContent(vm, onHistory)
+                1 -> Favorites(vm, onCoin)
+                else -> AlertsSection(alerts, snackbar, onEditAlert)
             }
         }
     }

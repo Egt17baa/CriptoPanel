@@ -1,5 +1,11 @@
 package app.criptopanel
 
+import app.criptopanel.alerts.AlertMonitor
+import app.criptopanel.alerts.AlertNotifier
+import app.criptopanel.alerts.AlertStore
+import app.criptopanel.alerts.BINANCE_REST_URL
+import app.criptopanel.alerts.BinanceApi
+import app.criptopanel.alerts.OkHttpPriceStream
 import app.criptopanel.core.network.ALTERNATIVE_BASE_URL
 import app.criptopanel.core.network.COINGECKO_BASE_URL
 import app.criptopanel.core.network.COINLORE_BASE_URL
@@ -23,9 +29,10 @@ import java.io.File
 
 /** Also named in res/xml/backup_rules.xml and data_extraction_rules.xml. */
 const val PORTFOLIO_FILE = "portfolio.json"
+const val ALERTS_FILE = "alerts.json"
 
 /** Manual dependency graph, one per process. */
-class AppContainer(demoKey: String, filesDir: File) {
+class AppContainer(demoKey: String, filesDir: File, notifier: AlertNotifier) {
     private val client = okHttpClient(demoKey)
     private val coinGecko = retrofit(COINGECKO_BASE_URL, client).create(CoinGeckoApi::class.java)
     private val defiLlama = retrofit(DEFILLAMA_BASE_URL, client).create(DefiLlamaApi::class.java)
@@ -43,6 +50,18 @@ class AppContainer(demoKey: String, filesDir: File) {
 
     /** Portfolio and favourites; the only data the app keeps (and backs up). */
     val portfolioStore = PortfolioStore(File(filesDir, PORTFOLIO_FILE))
+
+    val alertStore = AlertStore(File(filesDir, ALERTS_FILE))
+
+    /** One per process: the service runs it, the UI reads its status and live prices. */
+    val alertMonitor = AlertMonitor(
+        alertStore,
+        portfolioStore,
+        marketRepository,
+        retrofit(BINANCE_REST_URL, client).create(BinanceApi::class.java),
+        OkHttpPriceStream(client),
+        notifier,
+    )
 
     val defiRepository = DefiRepository(defiLlama)
 

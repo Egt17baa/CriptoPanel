@@ -30,6 +30,11 @@ CriptoPanel reúne en una sola app todo lo que necesitas para seguir el mercado 
 • Favoritos para seguir tus monedas de un vistazo
 • Exporta e importa tu cartera en CSV; tus datos se quedan en tu móvil
 
+🔔 ALERTAS EN DIRECTO
+• Precio que sube o baja de un valor, movimientos bruscos (15 min, 1 h, 4 h) y cambio en 24 h
+• Alertas sobre el valor de tu cartera
+• Avisos al momento con precios en directo, aunque la app esté cerrada
+
 🔎 CUALQUIER TOKEN
 • Busca cualquier moneda o token y consulta su precio, gráfico (24 h, 7 d, 30 d, 1 año), máximos y oferta
 
@@ -49,6 +54,8 @@ Datos de fuentes públicas: CoinGecko, CoinLore, DefiLlama, Alternative.me y Tra
 CriptoPanel es una herramienta informativa: no permite comprar ni vender criptomonedas y no es asesoramiento financiero.
 
 **Seguridad de los datos (Play Console)**: la app no recoge ni comparte datos. La cartera se guarda solo en el dispositivo.
+
+**Servicio en primer plano (Play Console → Declaración)**: tipo `specialUse`. Justificación: el usuario crea alertas de precio y espera el aviso en el momento; la app no tiene servidor de notificaciones push, así que mantiene una conexión de datos de mercado mientras haya alertas activas, con notificación visible y botón de pausa.
 
 **Categoría**: Finanzas
 **Etiquetas sugeridas**: criptomonedas, bitcoin, mercado, DeFi

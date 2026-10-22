@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Android 11 and older: only the portfolio (operations and favourites) is backed up. -->
+<!-- Android 11 and older: only the portfolio (operations and favourites) and the alerts are backed up. -->
 <full-backup-content>
     <include domain="file" path="portfolio.json" />
+    <include domain="file" path="alerts.json" />
 </full-backup-content>

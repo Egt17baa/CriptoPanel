@@ -60,6 +60,14 @@ import androidx.navigation.NavType
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.LaunchedEffect
+import app.criptopanel.alerts.android.AlertService
+import app.criptopanel.alerts.AlertsViewModel
+import app.criptopanel.alerts.AlertFormViewModel
+import app.criptopanel.alerts.AlertFormScreen
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.MutableStateFlow
 
 private data class Tab(val route: String, val label: String, val icon: ImageVector)
 
@@ -74,7 +82,7 @@ private val tabs = listOf(
 private fun appContainer(): AppContainer = (LocalContext.current.applicationContext as CriptoPanelApp).container
 
 @Composable
-fun AppNavHost() {
+fun AppNavHost(pendingRoute: MutableStateFlow<String?> = MutableStateFlow(null)) {
     val nav = rememberNavController()
     val container = appContainer()
     val backStack by nav.currentBackStackEntryAsState()
@@ -85,6 +93,24 @@ fun AppNavHost() {
     val portfolio by store.data.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     LaunchedEffect(store) { store.load() }
+    val context = LocalContext.current
+    val alertStore = container.alertStore
+    // While the app is open, run the watch service exactly when some alert is enabled.
+    LaunchedEffect(alertStore) {
+        alertStore.load()
+        alertStore.data.map { d -> d.alerts.count { it.enabled } }.distinctUntilChanged()
+            .collect { AlertService.sync(context, it) }
+    }
+    // A tapped notification asks for a screen.
+    LaunchedEffect(pendingRoute) {
+        pendingRoute.filterNotNull().collect { route ->
+            nav.navigate(route) { launchSingleTop = true }
+            pendingRoute.value = null
+        }
+    }
+    val onAddAlert: (String?) -> Unit = { coinId ->
+        nav.navigate(if (coinId == null) "alert" else "alert?coinId=${Uri.encode(coinId)}")
+    }
     val onAddOperation: (String?) -> Unit = { coinId ->
         nav.navigate(if (coinId == null) "operation" else "operation?coinId=${Uri.encode(coinId)}")
     }
@@ -96,7 +122,7 @@ fun AppNavHost() {
                 NavigationBar {
                     tabs.forEach { tab ->
                         NavigationBarItem(
-                            selected = currentRoute == tab.route,
+                            selected = currentRoute?.substringBefore('?') == tab.route,
                             onClick = {
                                 nav.navigate(tab.route) {
                                     popUpTo(nav.graph.findStartDestination().id) { saveState = true }
@@ -177,11 +203,19 @@ fun AppNavHost() {
                         isFavorite = id in portfolio.favorites,
                         onToggleFavorite = { scope.launch { store.toggleFavorite(id) } },
                         onAddOperation = { onAddOperation(id) },
+                        onAddAlert = { onAddAlert(id) },
                         onBack = { nav.popBackStack() },
                     )
                 }
-                composable("portfolio") {
+                composable(
+                    "portfolio?tab={tab}",
+                    arguments = listOf(navArgument("tab") { type = NavType.IntType; defaultValue = 0 }),
+                ) { entry ->
                     PortfolioScreen(
+                        initialTab = entry.arguments?.getInt("tab") ?: 0,
+                        alerts = viewModel { AlertsViewModel(alertStore, container.alertMonitor, container.marketRepository, store) },
+                        onAddAlert = { onAddAlert(null) },
+                        onEditAlert = { id -> nav.navigate("alert?id=${Uri.encode(id)}") },
                         vm = viewModel { PortfolioViewModel(store, container.marketRepository) },
                         store = store,
                         onCoin = onCoin,
@@ -201,6 +235,21 @@ fun AppNavHost() {
                     OperationScreen(
                         vm = viewModel { OperationViewModel(store, container.marketRepository, editId, coinId) },
                         search = viewModel(key = "operation-search") { SearchViewModel(container.marketRepository) },
+                        onDone = { nav.popBackStack() },
+                    )
+                }
+                composable(
+                    "alert?coinId={coinId}&id={id}",
+                    arguments = listOf(
+                        navArgument("coinId") { type = NavType.StringType; nullable = true; defaultValue = null },
+                        navArgument("id") { type = NavType.StringType; nullable = true; defaultValue = null },
+                    ),
+                ) { entry ->
+                    val coinId = entry.arguments?.getString("coinId")
+                    val editId = entry.arguments?.getString("id")
+                    AlertFormScreen(
+                        vm = viewModel { AlertFormViewModel(alertStore, container.marketRepository, store, editId, coinId) },
+                        search = viewModel(key = "alert-search") { SearchViewModel(container.marketRepository) },
                         onDone = { nav.popBackStack() },
                     )
                 }

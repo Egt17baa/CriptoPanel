@@ -20,6 +20,11 @@ Diseño Material 3 siempre oscuro, en gris y negro, con paneles de vidrio sobre 
   o pérdida por precio medio, el cambio de hoy, la evolución (7 d, 30 d, 1 año), el reparto y el historial.
   Exporta e importa en CSV. En **Favoritos** están las monedas marcadas con la ☆ en su detalle.
   Todo se guarda solo en el móvil (`files/portfolio.json`, incluido en la copia de seguridad de Android).
+- **Alertas** (Cartera → Alertas, o 🔔 en el detalle de una moneda): precio sube o baja de un valor, cambio rápido
+  (X % en 15 min, 1 h o 4 h), cambio en 24 h, y valor o cambio de hoy de tu cartera. Se vigilan **en directo** con el
+  flujo público de Binance (`data-stream.binance.vision`, 1 actualización por segundo); las monedas que no cotizan
+  en Binance se comprueban cada minuto con CoinGecko. Mientras haya alertas activas, un servicio en primer plano
+  (`specialUse`) muestra una notificación fija silenciosa. Una alerta que salta se desactiva sola.
 - **DeFi**, con pestañas:
   - **TVL**: total con gráfico de un año, TVL por red (con % del total) y por protocolo.
     Al tocar una red: su histórico de TVL y sus protocolos.
@@ -38,6 +43,7 @@ Diseño Material 3 siempre oscuro, en gris y negro, con paneles de vidrio sobre 
 - [TradingView](https://www.tradingview.com/widget-docs/widgets/charts/advanced-chart/): widget gratuito para los gráficos de índices.
 - [DefiLlama API](https://api-docs.defillama.com/) (`api.llama.fi`, `stablecoins.llama.fi`, `yields.llama.fi`): TVL por red,
   histórico y protocolos (sin exchanges centralizados), stablecoins, volumen de DEX, comisiones e ingresos, y rendimientos.
+- [Binance market data](https://developers.binance.com/docs/binance-spot-api-docs/web-socket-streams) (`data-api.binance.vision`, `data-stream.binance.vision`): precios en directo para las alertas.
 - [Alternative.me](https://alternative.me/crypto/fear-and-greed-index/) (`api.alternative.me`): índice de miedo y codicia.
 
 El plan gratuito de CoinGecko limita las peticiones por minuto (y en redes móviles muchas personas comparten IP).
@@ -82,7 +88,7 @@ gradle -p jvm-check test
 
 ## Estado de verificación
 
-- Versión 1.2.0: `./gradlew :app:testDebugUnitTest :app:lintRelease :app:assembleRelease` compila, 141 tests pasan
+- Versión 1.3.0: `./gradlew :app:testDebugUnitTest :app:lintRelease :app:assembleRelease` compila, 167 tests pasan
   (también en `jvm-check`) y lint no da errores.
 - Los fixtures de las fuentes nuevas son respuestas reales de CoinGecko, DefiLlama y Alternative.me (22-10-2026), recortadas.
 - Falta probarla en un móvil o emulador, sobre todo el aspecto de vidrio líquido: instala el APK y revisa cada pantalla.
