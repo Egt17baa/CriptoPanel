@@ -5,6 +5,7 @@ import app.criptopanel.alerts.AlertNotifier
 import app.criptopanel.alerts.AlertStore
 import app.criptopanel.alerts.BINANCE_REST_URL
 import app.criptopanel.alerts.BinanceApi
+import app.criptopanel.alerts.BinanceHistoryApi
 import app.criptopanel.alerts.OkHttpPriceStream
 import app.criptopanel.core.network.ALTERNATIVE_BASE_URL
 import app.criptopanel.core.network.COINGECKO_BASE_URL
@@ -24,6 +25,7 @@ import app.criptopanel.market.CoinLoreApi
 import app.criptopanel.market.MarketInsightsRepository
 import app.criptopanel.market.MarketRepository
 import app.criptopanel.market.SentimentApi
+import app.criptopanel.portfolio.HistoricalPrices
 import app.criptopanel.portfolio.PortfolioStore
 import java.io.File
 
@@ -50,6 +52,9 @@ class AppContainer(demoKey: String, filesDir: File, notifier: AlertNotifier) {
 
     /** Portfolio and favourites; the only data the app keeps (and backs up). */
     val portfolioStore = PortfolioStore(File(filesDir, PORTFOLIO_FILE))
+
+    /** Prices on past days for the operation form. */
+    val historicalPrices = HistoricalPrices(coinGecko, retrofit(BINANCE_REST_URL, client).create(BinanceHistoryApi::class.java))
 
     val alertStore = AlertStore(File(filesDir, ALERTS_FILE))
 

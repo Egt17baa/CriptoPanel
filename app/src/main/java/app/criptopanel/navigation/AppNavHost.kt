@@ -233,7 +233,7 @@ fun AppNavHost(pendingRoute: MutableStateFlow<String?> = MutableStateFlow(null))
                     val coinId = entry.arguments?.getString("coinId")
                     val editId = entry.arguments?.getString("id")
                     OperationScreen(
-                        vm = viewModel { OperationViewModel(store, container.marketRepository, editId, coinId) },
+                        vm = viewModel { OperationViewModel(store, container.marketRepository, container.historicalPrices, editId, coinId) },
                         search = viewModel(key = "operation-search") { SearchViewModel(container.marketRepository) },
                         onDone = { nav.popBackStack() },
                     )

@@ -2,7 +2,9 @@ package app.criptopanel.alerts
 
 import app.criptopanel.core.network.appJson
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
 import retrofit2.http.GET
+import retrofit2.http.Query
 import kotlin.math.abs
 
 const val BINANCE_REST_URL = "https://data-api.binance.vision/"
@@ -13,6 +15,21 @@ interface BinanceApi {
     /** Every pair's last price (~2 000 pairs, one request). */
     @GET("api/v3/ticker/price")
     suspend fun prices(): List<BinancePriceDto>
+}
+
+/** Single-pair lookups, used for the price a coin had on a past day. */
+interface BinanceHistoryApi {
+    @GET("api/v3/ticker/price")
+    suspend fun price(@Query("symbol") symbol: String): BinancePriceDto
+
+    /** Rows of [openTime, open, high, low, close, …], numbers as strings. */
+    @GET("api/v3/klines")
+    suspend fun klines(
+        @Query("symbol") symbol: String,
+        @Query("startTime") startTime: Long,
+        @Query("interval") interval: String = "1d",
+        @Query("limit") limit: Int = 1,
+    ): List<List<JsonElement>>
 }
 
 @Serializable

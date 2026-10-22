@@ -34,6 +34,9 @@ data class CoinDetailDto(
 )
 
 @Serializable
+data class CoinHistoryDto(@SerialName("market_data") val marketData: MarketDataDto? = null)
+
+@Serializable
 data class ImageDto(val thumb: String? = null, val small: String? = null, val large: String? = null)
 
 @Serializable

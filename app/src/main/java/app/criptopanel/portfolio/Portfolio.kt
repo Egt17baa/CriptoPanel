@@ -204,3 +204,10 @@ fun valueSeries(
         PricePoint(t, total)
     }
 }
+
+/** Quantity of [coinId] held at the end of [date], leaving out the operation being edited. */
+fun heldOn(operations: List<Operation>, coinId: String, date: LocalDate, excludeId: String? = null): Double =
+    operations
+        .filter { it.coinId == coinId && it.id != excludeId && !it.localDate.isAfter(date) }
+        .sumOf { if (it.type == OperationType.BUY) it.quantity else -it.quantity }
+        .let { if (it < QUANTITY_EPSILON) 0.0 else it }

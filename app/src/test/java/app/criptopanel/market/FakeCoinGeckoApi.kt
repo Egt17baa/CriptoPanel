@@ -41,4 +41,14 @@ class FakeCoinGeckoApi : CoinGeckoApi {
     override suspend fun categories(): List<CategoryDto> = serve { decodeFixture("cg_categories.json") }
 
     override suspend fun exchanges(perPage: Int): List<ExchangeDto> = serve { decodeFixture("cg_exchanges.json") }
+
+    val historyDates = mutableListOf<String>()
+    /** Price the fake reports for any past day; null makes history() fail like the free API outside 365 days. */
+    var historyPrice: Double? = 50_000.0
+
+    override suspend fun history(id: String, date: String, l: Boolean): CoinHistoryDto = serve {
+        historyDates += date
+        val p = historyPrice ?: throw retrofit2.HttpException(retrofit2.Response.error<Any>(401, okhttp3.ResponseBody.create(null, "")))
+        CoinHistoryDto(MarketDataDto(currentPrice = mapOf("usd" to p)))
+    }
 }

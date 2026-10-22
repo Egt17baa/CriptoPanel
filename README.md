@@ -88,7 +88,7 @@ gradle -p jvm-check test
 
 ## Estado de verificación
 
-- Versión 1.3.0: `./gradlew :app:testDebugUnitTest :app:lintRelease :app:assembleRelease` compila, 167 tests pasan
+- Versión 1.3.1: `./gradlew :app:testDebugUnitTest :app:lintRelease :app:assembleRelease` compila, 173 tests pasan
   (también en `jvm-check`) y lint no da errores.
 - Los fixtures de las fuentes nuevas son respuestas reales de CoinGecko, DefiLlama y Alternative.me (22-10-2026), recortadas.
 - Falta probarla en un móvil o emulador, sobre todo el aspecto de vidrio líquido: instala el APK y revisa cada pantalla.

@@ -38,6 +38,14 @@ interface CoinGeckoApi {
     @GET("search")
     suspend fun search(@Query("query") q: String): SearchDto
 
+    /** Price at 00:00 UTC of [date] (dd-MM-yyyy); the free API only covers the last 365 days. */
+    @GET("coins/{id}/history")
+    suspend fun history(
+        @Path("id") id: String,
+        @Query("date") date: String,
+        @Query("localization") l: Boolean = false,
+    ): CoinHistoryDto
+
     @GET("search/trending")
     suspend fun trending(): TrendingDto
 
