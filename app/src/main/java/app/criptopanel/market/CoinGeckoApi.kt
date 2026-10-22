@@ -13,6 +13,8 @@ interface CoinGeckoApi {
         @Query("page") page: Int = 1,
         @Query("sparkline") sparkline: Boolean = true,
         @Query("price_change_percentage") changes: String = "1h,24h,7d",
+        /** A CoinGecko category id (sector); null for the whole market. */
+        @Query("category") category: String? = null,
     ): List<CoinMarketDto>
 
     @GET("coins/{id}")

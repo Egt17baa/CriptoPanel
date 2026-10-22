@@ -1,5 +1,6 @@
 package app.criptopanel.market
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -37,7 +38,7 @@ import app.criptopanel.core.ui.changeColor
 import coil3.compose.AsyncImage
 
 @Composable
-fun CategoriesScreen(vm: LoaderViewModel<List<Category>>, onBack: () -> Unit) {
+fun CategoriesScreen(vm: LoaderViewModel<List<Category>>, onCategory: (Category) -> Unit, onBack: () -> Unit) {
     val state by vm.state.collectAsStateWithLifecycle()
     var sort by rememberSaveable { mutableStateOf(CategorySort.CAP) }
     LaunchedEffect(vm) { vm.refresh() }
@@ -56,7 +57,7 @@ fun CategoriesScreen(vm: LoaderViewModel<List<Category>>, onBack: () -> Unit) {
                 if (sorted.isEmpty()) EmptyMessage("Sin sectores")
                 LazyColumn {
                     itemsIndexed(sorted, key = { _, c -> c.id }) { i, category ->
-                        CategoryRow(i + 1, category)
+                        CategoryRow(i + 1, category, onClick = { onCategory(category) })
                         HorizontalDivider()
                     }
                 }
@@ -66,15 +67,15 @@ fun CategoriesScreen(vm: LoaderViewModel<List<Category>>, onBack: () -> Unit) {
 }
 
 @Composable
-private fun CategoryRow(position: Int, category: Category) {
+private fun CategoryRow(position: Int, category: Category, onClick: () -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
         Text("$position", style = MaterialTheme.typography.labelSmall, modifier = Modifier.width(28.dp))
         Column(Modifier.weight(1f)) {
-            Text(category.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text("${category.name} ›", maxLines = 1, overflow = TextOverflow.Ellipsis)
             Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
                 category.topCoinImages.forEach { url ->
                     AsyncImage(model = url, contentDescription = null, modifier = Modifier.size(16.dp))

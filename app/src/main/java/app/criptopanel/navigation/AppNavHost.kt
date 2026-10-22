@@ -38,6 +38,7 @@ import app.criptopanel.defi.ChainDetailViewModel
 import app.criptopanel.defi.DefiScreen
 import app.criptopanel.defi.DefiViewModel
 import app.criptopanel.market.CategoriesScreen
+import app.criptopanel.market.CategoryDetailScreen
 import app.criptopanel.market.ExchangesScreen
 import app.criptopanel.market.IndexChartScreen
 import app.criptopanel.market.MoversScreen
@@ -118,7 +119,20 @@ fun AppNavHost() {
                     )
                 }
                 composable("categories") {
-                    CategoriesScreen(vm = viewModel { LoaderViewModel { insights.categories(it) } }, onBack = { nav.popBackStack() })
+                    CategoriesScreen(
+                        vm = viewModel { LoaderViewModel { insights.categories(it) } },
+                        onCategory = { c -> nav.navigate("category/${Uri.encode(c.id)}?name=${Uri.encode(c.name)}") },
+                        onBack = { nav.popBackStack() },
+                    )
+                }
+                composable("category/{id}?name={name}") { entry ->
+                    val id = entry.arguments?.getString("id").orEmpty()
+                    CategoryDetailScreen(
+                        title = entry.arguments?.getString("name").orEmpty(),
+                        vm = viewModel(key = "category-$id") { LoaderViewModel { insights.categoryDetail(id, it) } },
+                        onCoin = onCoin,
+                        onBack = { nav.popBackStack() },
+                    )
                 }
                 composable("exchanges") {
                     ExchangesScreen(vm = viewModel { LoaderViewModel { insights.exchanges(it) } }, onBack = { nav.popBackStack() })

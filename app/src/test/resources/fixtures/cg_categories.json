@@ -10,7 +10,8 @@
    "https://coin-images.coingecko.com/coins/images/279/small/ethereum.png",
    "https://coin-images.coingecko.com/coins/images/825/small/bnb-icon2_2x.png"
   ],
-  "updated_at": "2026-10-22T10:23:51.000Z"
+  "updated_at": "2026-10-22T10:23:51.000Z",
+  "content": "Smart contract platforms are usually blockchains that host smart contracts or decentralized applications."
  },
  {
   "id": "layer-1",
@@ -23,7 +24,8 @@
    "https://coin-images.coingecko.com/coins/images/279/small/ethereum.png",
    "https://coin-images.coingecko.com/coins/images/825/small/bnb-icon2_2x.png"
   ],
-  "updated_at": "2026-10-22T10:23:51.000Z"
+  "updated_at": "2026-10-22T10:23:51.000Z",
+  "content": ""
  },
  {
   "id": "proof-of-work-pow",

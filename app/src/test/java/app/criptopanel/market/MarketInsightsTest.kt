@@ -2,6 +2,7 @@ package app.criptopanel.market
 
 import app.criptopanel.api
 import app.criptopanel.coins.CoinMarket
+import app.criptopanel.core.network.AppError
 import app.criptopanel.core.network.Outcome
 import app.criptopanel.decodeFixture
 import app.criptopanel.enqueueFixture
@@ -80,6 +81,37 @@ class MarketInsightsTest {
         clock += 1
         repo.fearGreed()
         assertEquals(2, sentiment.calls)
+    }
+
+    @Test fun `sector detail joins the sector and its coins`() = runTest {
+        val d = (repo.categoryDetail("smart-contract-platform") as Outcome.Ok).value
+        assertEquals("smart-contract-platform", d.category.id)
+        assertTrue(d.category.description!!.startsWith("Smart contract platforms"))
+        assertEquals(listOf("bitcoin", "ethereum", "nullcoin"), d.coins.map { it.id })
+        assertEquals(listOf<String?>("smart-contract-platform"), gecko.categories)
+    }
+
+    @Test fun `blank sector description becomes null`() = runTest {
+        assertNull((repo.categoryDetail("layer-1") as Outcome.Ok).value.category.description)
+    }
+
+    @Test fun `sector coins cached per sector`() = runTest {
+        repo.categoryDetail("layer-1")
+        repo.categoryDetail("layer-1")
+        repo.categoryDetail("smart-contract-platform")
+        assertEquals(listOf<String?>("layer-1", "smart-contract-platform"), gecko.categories)
+    }
+
+    @Test fun `unknown sector is a 404`() = runTest {
+        assertEquals(Outcome.Err(AppError.Http(404)), repo.categoryDetail("nope"))
+    }
+
+    @Test fun `category id goes in the markets query`() = runTest {
+        val server = MockWebServer().apply { start() }
+        server.enqueueFixture("cg_markets.json")
+        server.api<CoinGeckoApi>().markets(category = "layer-1")
+        assertTrue(server.takeRequest().path!!.endsWith("&category=layer-1"))
+        server.shutdown()
     }
 
     @Test fun `movers fail when top coins fail`() = runTest {
