@@ -135,7 +135,17 @@ Corregido:
 | Baja | Importar una bóveda enorme podía agotar la memoria. | Límite de 20 MB y lectura fuera del hilo principal. |
 | Baja | Contador de registros de archivo sin tope. | Se rechaza antes de repetir un nonce (256 TiB). |
 
-No se cambia: los campos `kdf`, `salt` y `masterCheckedAt` del archivo de bóveda no van autenticados; alterarlos exige escribir en los archivos privados de la app (root), y entonces el atacante ya controla el móvil.
+## Bóveda versión 2 (1.9.3): todo el archivo autenticado
+
+Contra quien tenga **root** y pueda escribir en los archivos de la app:
+
+- La clave envuelta lleva como datos asociados el formato, la versión, el coste de Argon2id y la sal.
+- Los datos llevan además el número de **revisión** (sube en cada guardado) y la fecha de la última contraseña maestra.
+- Resultado: cambiar la fecha para alargar los 7 días de huella, mezclar datos antiguos con el archivo actual, cambiar el coste o la sal, o bajar a la versión 1, hace fallar el descifrado.
+- La huella no se ofrece con una fecha futura ni con archivos de versión 1.
+- Las bóvedas y copias de versión 1 se abren y pasan a versión 2 en el siguiente desbloqueo con la contraseña maestra (la misma clave de datos, así la huella sigue valiendo).
+
+Lo que ninguna app puede impedir con root: volver a poner el archivo completo de una fecha anterior (no hay almacenamiento de confianza para un contador), leer la memoria mientras la bóveda está abierta o capturar lo que se escribe.
 
 ## Avisos
 

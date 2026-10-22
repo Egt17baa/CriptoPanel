@@ -96,12 +96,17 @@ class VaultStore(
         val v = vault ?: return@withLock
         val since = epoch
         val key = withContext(compute) { VaultCrypto.unlock(v, master) }
-        val checked = v.copy(masterCheckedAt = now())
+        val checked = try {
+            withContext(compute) { VaultCrypto.afterMasterUnlock(v, key, master, now(), kdf) }
+        } catch (e: Exception) {
+            key.fill(0)
+            throw e
+        }
         save(checked)
         opened(checked, key, since)
     }
 
-    val biometricAllowed: Boolean get() = vault?.let { now() - it.masterCheckedAt < MASTER_RECHECK_MS } ?: false
+    val biometricAllowed: Boolean get() = vault?.let { VaultCrypto.biometricAllowed(it, now()) } ?: false
 
     /** With a data key released by the biometric prompt. Throws [MasterRequired] when the 7-day recheck is due. */
     suspend fun unlockWithKey(key: ByteArray) = mutex.withLock {
@@ -180,10 +185,10 @@ class VaultStore(
         val since = epoch
         val incoming = withContext(compute) { VaultCrypto.decodeFile(text) }
         val key = withContext(compute) { VaultCrypto.unlock(incoming, master) }
-        val checked = incoming.copy(masterCheckedAt = now())
-        try {
-            VaultCrypto.read(checked, key) // Validates the data before replacing anything.
-        } catch (e: CryptoFailure) {
+        // Validates the data before replacing anything, and brings an old export to the current format.
+        val checked = try {
+            withContext(compute) { VaultCrypto.afterMasterUnlock(incoming, key, master, now(), kdf) }
+        } catch (e: Exception) {
             key.fill(0)
             throw e
         }
