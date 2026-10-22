@@ -27,6 +27,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -38,25 +40,46 @@ private tailrec fun Context.activity(): Activity? = when (this) {
     else -> null
 }
 
-/** No screenshots, screen recording or previews in Recents while a security screen is shown. */
+/**
+ * No screenshots, screen recording or previews in Recents while a security screen is shown, and no taps while
+ * another app draws over it (tapjacking; Android 12+ also blocks that itself).
+ */
 @Composable
 fun SecureWindow() {
     val activity = LocalContext.current.activity()
     DisposableEffect(activity) {
-        activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
-        onDispose { activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_SECURE) }
+        val window = activity?.window
+        if (window != null) {
+            // Counted: going from one secure screen to the next, the old one leaves after the new one arrived.
+            if (secureScreens++ == 0) {
+                window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                window.decorView.filterTouchesWhenObscured = true
+            }
+        }
+        onDispose {
+            if (window != null && --secureScreens == 0) {
+                window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                window.decorView.filterTouchesWhenObscured = false
+            }
+        }
     }
 }
 
+/** Secure screens currently shown (main thread only; the app has a single activity). */
+private var secureScreens = 0
+
+/** Outlives any screen, so leaving the screen right after copying still clears the clipboard. */
+private val clipboardScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
 /** Copies [text] marked as sensitive (hidden in the keyboard's clipboard preview) and clears it after 45 s if unchanged. */
-fun copySensitive(context: Context, scope: CoroutineScope, text: String) {
+fun copySensitive(context: Context, text: String) {
     val cm = context.getSystemService(ClipboardManager::class.java) ?: return
     val clip = ClipData.newPlainText("CriptoPanel", text)
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         clip.description.extras = PersistableBundle().apply { putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true) }
     }
     cm.setPrimaryClip(clip)
-    scope.launch {
+    clipboardScope.launch {
         delay(CLIPBOARD_CLEAR_MS)
         val still = runCatching { cm.primaryClip?.getItemAt(0)?.text?.toString() == text }.getOrDefault(false)
         if (still) {

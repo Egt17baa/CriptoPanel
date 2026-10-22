@@ -87,11 +87,33 @@ Petición del usuario: cifrar las 12 o 24 palabras de una wallet con una clave q
 | 5 | Camellia-256-GCM | Bouncy Castle |
 | 6 | Cascada AES → Twofish → Serpent | Tres capas GCM; cada capa con su clave derivada por HKDF-SHA256 (info `criptopanel-cascade-<capa>`). Sobrecarga: 48 bytes. |
 
-- **Secreto:** contraseña (KDF 1 = Argon2id) o **clave AES-256 aleatoria** (KDF 2 = clave directa, sin sal útil ni derivación). La clave se muestra como 64 caracteres hexadecimales en grupos de 4; al pegarla se ignoran espacios y mayúsculas. Si se intenta descifrar con el tipo de secreto equivocado, el mensaje lo dice.
+- **Secreto:** contraseña (KDF 1 = Argon2id) o **clave AES-256 aleatoria**: desde 1.9.1, KDF 3 = la clave se expande con HKDF-SHA256 y una sal aleatoria de 16 bytes, así cada texto o archivo usa una clave distinta (los de 1.9.0, KDF 2 = clave directa, se siguen leyendo). La clave se muestra como 64 caracteres hexadecimales en grupos de 4; al pegarla se ignoran espacios y mayúsculas. Si se intenta descifrar con el tipo de secreto equivocado, el mensaje lo dice.
 - **Descifrar** lee la cabecera y avisa del algoritmo y de si hace falta clave o contraseña.
 - Los archivos `.cpenc` admiten los mismos algoritmos y secretos; cada registro lleva la sobrecarga de su algoritmo.
 - **Independencia:** solo se usan algoritmos públicos y libres de patentes (AES, ChaCha20, Twofish, Serpent y Camellia), implementados por `javax.crypto` y Bouncy Castle (licencia MIT). No hay código, formato, nombre ni diseño de ninguna otra app; el formato `CP1` es propio.
 - **Pruebas:** vectores de Camellia (RFC 3713) y Twofish; ida y vuelta de texto y archivos con cada algoritmo y cada tipo de secreto; secreto equivocado y manipulación; checksums BIP-39 conocidos y sugerencias.
+
+## Auditoría de seguridad (1.9.1)
+
+Revisión de todo el código (cifrado, bóveda, red, WebView, intents, importación, compilación). Corregido:
+
+| Gravedad | Problema | Arreglo |
+|---|---|---|
+| Media | El APK público se firmaba con la clave de prueba, que está en el repositorio (público): cualquiera podía firmar una «actualización» falsa que, instalada encima, leería la bóveda. | El workflow firma con la clave privada de los secretos del repositorio cuando existen (ver PUBLICAR.md). |
+| Media | MainActivity está exportada y navegaba a cualquier ruta recibida: otra app podía abrir cualquier pantalla o cerrar la app con una ruta falsa. | Solo se aceptan las rutas de nuestras notificaciones (`allowedExternalRoute`) y la navegación no puede romper la app. |
+| Media | Al pasar de una pantalla de Seguridad a otra, la anterior quitaba `FLAG_SECURE` al salir: la nueva quedaba sin protección contra capturas. | Contador de pantallas seguras. |
+| Media | El borrado del portapapeles a los 45 s se cancelaba al salir de la pantalla: la frase copiada se quedaba en el portapapeles. | Temporizador en un ámbito del proceso, no de la pantalla. |
+| Baja | La frase semilla de la bóveda y el texto libre usaban el teclado normal, que aprende y sugiere palabras. | Teclado de contraseña, sin autocorrector. |
+| Baja | Un archivo descifrado podía quedarse en la caché si la app moría antes de guardarlo. | La ruta sobrevive a la recreación y los restos se borran al arrancar. |
+| Baja | Una cabecera manipulada podía pedir 1 GiB a Argon2id (cierre por falta de memoria). | Máximo 256 MiB. |
+| Baja | Clave AES-256 propia usada tal cual en todos los mensajes. | HKDF con sal aleatoria por mensaje (KDF 3). |
+| Baja | CSV: celdas que empiezan por `= + - @` se ejecutaban como fórmulas en Excel; un archivo enorme cerraba la app. | Se anteponen con `'` (y se quitan al importar); límite de 5 MB. |
+| Baja | El WebView de TradingView podía abrir enlaces de cualquier esquema (deep links de otras apps). | Solo `http`/`https`. |
+| Baja | Sin protección contra superposiciones (tapjacking) en Android 8–11. | `filterTouchesWhenObscured` en las pantallas de Seguridad. |
+
+Revisado y correcto: HTTPS/WSS en todas las conexiones, sin tráfico en claro, sin registros (logs) de datos, `PendingIntent` inmutables y explícitos, servicio y receptor no exportados, copias de seguridad sin bóveda, R8 activado, sin vulnerabilidades conocidas en OkHttp 5.3.2, Retrofit 3.0.0 y Bouncy Castle 1.80, huella con `CryptoObject` y clave del Keystore invalidada al añadir huellas, nombres de archivo sin rutas.
+
+Riesgos que quedan (inherentes): las contraseñas escritas pasan por `String` de Compose y no se pueden borrar de memoria; un móvil con root o malware con permisos de accesibilidad puede leer la pantalla; no hay auditoría externa.
 
 ## Avisos
 

@@ -143,7 +143,7 @@ fun AppNavHost(pendingRoute: MutableStateFlow<String?> = MutableStateFlow(null))
     // A tapped notification asks for a screen.
     LaunchedEffect(pendingRoute) {
         pendingRoute.filterNotNull().collect { route ->
-            nav.navigate(route) { launchSingleTop = true }
+            runCatching { nav.navigate(route) { launchSingleTop = true } }
             pendingRoute.value = null
         }
     }

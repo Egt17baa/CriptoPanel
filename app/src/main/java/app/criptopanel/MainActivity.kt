@@ -11,6 +11,7 @@ import app.criptopanel.alerts.android.AlertService
 import app.criptopanel.alerts.android.EXTRA_ROUTE
 import app.criptopanel.core.ui.CriptoPanelTheme
 import app.criptopanel.navigation.AppNavHost
+import app.criptopanel.navigation.allowedExternalRoute
 import app.criptopanel.security.VaultLock
 import kotlinx.coroutines.flow.MutableStateFlow
 
@@ -26,13 +27,13 @@ class MainActivity : FragmentActivity() {
             statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
         )
-        if (savedInstanceState == null) pendingRoute.value = intent?.getStringExtra(EXTRA_ROUTE)
+        if (savedInstanceState == null) pendingRoute.value = allowedExternalRoute(intent?.getStringExtra(EXTRA_ROUTE))
         setContent { CriptoPanelTheme { AppNavHost(pendingRoute) } }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        intent.getStringExtra(EXTRA_ROUTE)?.let { pendingRoute.value = it }
+        allowedExternalRoute(intent.getStringExtra(EXTRA_ROUTE))?.let { pendingRoute.value = it }
     }
 
     override fun onStart() {

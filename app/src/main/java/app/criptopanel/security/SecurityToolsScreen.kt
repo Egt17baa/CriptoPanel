@@ -34,6 +34,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -115,7 +116,7 @@ private fun SecretInput(
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (allowGenerate) FilledTonalButton(onClick = { onKeyHex(newRawKeyHex()) }) { Text("🎲 Generar clave") }
-            if (parseRawKey(keyHex) != null) OutlinedButton(onClick = { copySensitive(context, scope, keyHex) }) { Text("Copiar clave") }
+            if (parseRawKey(keyHex) != null) OutlinedButton(onClick = { copySensitive(context, keyHex) }) { Text("Copiar clave") }
         }
         Text(
             "Una clave aleatoria de 256 bits: imposible de adivinar. Apúntala en papel y guárdala SEPARADA del texto cifrado: " +
@@ -197,7 +198,7 @@ fun TextCryptoScreen(onBack: () -> Unit) {
                 onValueChange = { input = if (seedMode) it.lowercase() else it; reset() },
                 label = { Text(if (seedMode) "Las 12, 18 o 24 palabras de tu wallet" else "Texto a cifrar") },
                 minLines = 4,
-                keyboardOptions = if (seedMode) KeyboardOptions(autoCorrectEnabled = false, keyboardType = KeyboardType.Password) else KeyboardOptions.Default,
+                keyboardOptions = KeyboardOptions(autoCorrectEnabled = false, keyboardType = KeyboardType.Password),
                 modifier = Modifier.fillMaxWidth(),
             )
             if (seedMode) SeedHelper(bip39, input) { input = it }
@@ -255,7 +256,7 @@ fun TextCryptoScreen(onBack: () -> Unit) {
                     )
                     if (seed) SeedGrid(bip39.normalize(out)) else SelectionContainer { Text(out, fontFamily = if (encrypt) FontFamily.Monospace else FontFamily.Default) }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FilledTonalButton(onClick = { copySensitive(context, scope, out) }) { Text("Copiar") }
+                        FilledTonalButton(onClick = { copySensitive(context, out) }) { Text("Copiar") }
                         if (encrypt) {
                             OutlinedButton(onClick = {
                                 context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, out), "Compartir"))
@@ -334,6 +335,9 @@ private fun displayName(context: Context, uri: Uri): String =
         if (c.moveToFirst()) c.getString(0) else null
     } ?: "archivo"
 
+/** Decrypted files wait here, in the app's private cache, until saved; leftovers are wiped at start. */
+const val DECRYPT_TMP_PREFIX = "dec"
+
 @Composable
 fun FileCryptoScreen(onBack: () -> Unit) {
     val context = LocalContext.current
@@ -348,7 +352,7 @@ fun FileCryptoScreen(onBack: () -> Unit) {
     var message by remember { mutableStateOf<Pair<Boolean, String>?>(null) }
     var busy by remember { mutableStateOf(false) }
     // Decrypted data waits here (app-private cache) until the user picks where to save it; deleted right after.
-    var pending by remember { mutableStateOf<File?>(null) }
+    var pendingPath by rememberSaveable { mutableStateOf<String?>(null) }
 
     val saveEncrypted = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { dest ->
         val src = source ?: return@rememberLauncherForActivityResult
@@ -372,7 +376,7 @@ fun FileCryptoScreen(onBack: () -> Unit) {
         }
     }
     val saveDecrypted = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { dest ->
-        val tmp = pending ?: return@rememberLauncherForActivityResult
+        val tmp = pendingPath?.let(::File) ?: return@rememberLauncherForActivityResult
         scope.launch {
             message = try {
                 if (dest != null) {
@@ -387,7 +391,7 @@ fun FileCryptoScreen(onBack: () -> Unit) {
                 false to "No se pudo guardar el archivo."
             } finally {
                 tmp.delete()
-                pending = null
+                pendingPath = null
             }
         }
     }
@@ -423,14 +427,14 @@ fun FileCryptoScreen(onBack: () -> Unit) {
                     val secret = secretOf(useKey, password, keyHex) ?: return@Button
                     busy = true
                     scope.launch {
-                        val tmp = File.createTempFile("dec", null, context.cacheDir)
+                        val tmp = File.createTempFile(DECRYPT_TMP_PREFIX, null, context.cacheDir)
                         try {
                             val name = withContext(Dispatchers.IO) {
                                 context.contentResolver.openInputStream(src)!!.use { input ->
                                     tmp.outputStream().buffered().use { out -> decryptStream(input.buffered(), out, secret) }
                                 }
                             }
-                            pending = tmp
+                            pendingPath = tmp.path
                             saveDecrypted.launch(safeFileName(name))
                         } catch (e: CryptoFailure) {
                             tmp.delete()
@@ -495,7 +499,7 @@ fun GeneratorScreen(onBack: () -> Unit) {
                 StrengthBar(bits)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilledTonalButton(onClick = { seed++ }) { Text("↻ Otra") }
-                    OutlinedButton(enabled = result != null, onClick = { result?.let { copySensitive(context, scope, it) } }) { Text("Copiar") }
+                    OutlinedButton(enabled = result != null, onClick = { result?.let { copySensitive(context, it) } }) { Text("Copiar") }
                 }
             }
         }
@@ -611,7 +615,7 @@ fun FileHashScreen(onBack: () -> Unit) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("SHA-256", style = MaterialTheme.typography.labelMedium)
                     SelectionContainer { Text(h, fontFamily = FontFamily.Monospace) }
-                    FilledTonalButton(onClick = { copySensitive(context, scope, h) }) { Text("Copiar") }
+                    FilledTonalButton(onClick = { copySensitive(context, h) }) { Text("Copiar") }
                 }
             }
             OutlinedTextField(

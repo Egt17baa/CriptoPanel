@@ -41,7 +41,7 @@ enum class Aead(val id: Byte, val label: String, val detail: String) {
 data class KdfParams(val memoryKiB: Int = 64 * 1024, val iterations: Int = 3, val parallelism: Int = 1) {
     /** Refuses absurd values from a crafted header (memory bombs). */
     fun checkSane() {
-        if (memoryKiB !in 8 * parallelism..1024 * 1024 || iterations !in 1..10 || parallelism !in 1..4) {
+        if (memoryKiB !in 8 * parallelism..MAX_KDF_MEMORY_KIB || iterations !in 1..10 || parallelism !in 1..4) {
             throw CryptoFailure("Parámetros de cifrado no válidos")
         }
     }
@@ -51,6 +51,8 @@ data class KdfParams(val memoryKiB: Int = 64 * 1024, val iterations: Int = 3, va
 class CryptoFailure(message: String = "Contraseña incorrecta o datos dañados") : Exception(message)
 
 const val KEY_BYTES = 32
+/** Highest Argon2id memory a header may ask for: 4× the default, still safe on any phone (no out-of-memory crash). */
+const val MAX_KDF_MEMORY_KIB = 256 * 1024
 const val SALT_BYTES = 16
 const val NONCE_BYTES = 12
 const val TAG_BYTES = 16
@@ -177,18 +179,29 @@ internal fun keyForHeader(secret: Secret, header: Header): ByteArray = when (sec
         if (header.kdfId != Header.KDF_ARGON2ID) throw CryptoFailure("Esto se cifró con una clave, no con una contraseña")
         argon2id(secret.chars, header.salt, header.kdf)
     }
-    is Secret.RawKey -> {
-        if (header.kdfId != Header.KDF_RAW_KEY) throw CryptoFailure("Esto se cifró con una contraseña, no con una clave")
-        secret.bytes.copyOf()
+    is Secret.RawKey -> when (header.kdfId) {
+        // A fresh key per message from the random salt, so one raw key can protect any number of texts and files.
+        Header.KDF_RAW_KEY_HKDF -> rawKeyHkdf(secret.bytes, header.salt)
+        Header.KDF_RAW_KEY -> secret.bytes.copyOf()
+        else -> throw CryptoFailure("Esto se cifró con una contraseña, no con una clave")
     }
 }
+
+internal fun rawKeyHkdf(key: ByteArray, salt: ByteArray): ByteArray {
+    val out = ByteArray(KEY_BYTES)
+    HKDFBytesGenerator(SHA256Digest()).apply { init(HKDFParameters(key, salt, "criptopanel-raw-key".toByteArray())) }.generateBytes(out, 0, out.size)
+    return out
+}
+
+/** Whether [kdfId] means a raw key rather than a password. */
+internal fun isRawKdf(kdfId: Byte) = kdfId == Header.KDF_RAW_KEY || kdfId == Header.KDF_RAW_KEY_HKDF
 
 /** Header shared by texts and files; the whole of it is authenticated as associated data. */
 internal data class Header(
     val kind: Byte,
     val alg: Aead,
     val kdf: KdfParams,
-    /** [KDF_ARGON2ID] for passwords, [KDF_RAW_KEY] for a raw key (then [kdf] is unused and stored as zeros). */
+    /** [KDF_ARGON2ID] for passwords, [KDF_RAW_KEY_HKDF] (or the older [KDF_RAW_KEY]) for a raw key; then [kdf] is unused and stored as zeros. */
     val kdfId: Byte,
     val salt: ByteArray,
     /** Full 12-byte nonce for texts, 7-byte STREAM prefix for files. */
@@ -208,7 +221,10 @@ internal data class Header(
         val MAGIC = byteArrayOf('C'.code.toByte(), 'P'.code.toByte())
         const val VERSION: Byte = 1
         const val KDF_ARGON2ID: Byte = 1
+        /** Raw key used directly (1.9.0 texts and files; still read, no longer written). */
         const val KDF_RAW_KEY: Byte = 2
+        /** Raw key, expanded with HKDF-SHA256 and the header's random salt. */
+        const val KDF_RAW_KEY_HKDF: Byte = 3
         const val KIND_TEXT: Byte = 1
         const val KIND_FILE: Byte = 2
         const val SIZE_BEFORE_NONCE = 2 + 1 + 1 + 1 + 1 + 4 + 1 + 1 + SALT_BYTES
@@ -225,7 +241,7 @@ internal data class Header(
             if (kind != expectedKind) throw CryptoFailure(if (kind == KIND_FILE) "Esto es un archivo cifrado" else "Esto es un texto cifrado")
             val alg = Aead.of(buf.get())
             val kdfId = buf.get()
-            if (kdfId != KDF_ARGON2ID && kdfId != KDF_RAW_KEY) throw CryptoFailure("Derivación de clave desconocida")
+            if (kdfId != KDF_ARGON2ID && !isRawKdf(kdfId)) throw CryptoFailure("Derivación de clave desconocida")
             val kdf = KdfParams(buf.int, buf.get().toInt() and 0xFF, buf.get().toInt() and 0xFF)
             if (kdfId == KDF_ARGON2ID) kdf.checkSane()
             val salt = ByteArray(SALT_BYTES).also { buf.get(it) }
@@ -244,8 +260,8 @@ internal fun newHeader(kind: Byte, alg: Aead, secret: Secret, kdf: KdfParams, ra
         kind = kind,
         alg = alg,
         kdf = kdf,
-        kdfId = if (raw) Header.KDF_RAW_KEY else Header.KDF_ARGON2ID,
-        salt = if (raw) ByteArray(SALT_BYTES) else randomBytes(SALT_BYTES, random),
+        kdfId = if (raw) Header.KDF_RAW_KEY_HKDF else Header.KDF_ARGON2ID,
+        salt = randomBytes(SALT_BYTES, random),
         nonce = randomBytes(Header.nonceSize(kind), random),
     )
 }
@@ -273,7 +289,7 @@ fun decryptText(token: String, password: CharArray): String = decryptText(token,
 fun inspectText(token: String): Pair<Aead, Boolean>? = try {
     val raw = Base64.getUrlDecoder().decode(token.trim().filterNot { it.isWhitespace() }.removePrefix(TEXT_PREFIX))
     val h = Header.parse(ByteBuffer.wrap(raw), Header.KIND_TEXT)
-    h.alg to (h.kdfId == Header.KDF_RAW_KEY)
+    h.alg to isRawKdf(h.kdfId)
 } catch (e: Exception) {
     null
 }

@@ -124,4 +124,35 @@ class SeedCryptoTest {
             // expected
         }
     }
+
+    @Test fun `raw key texts get a fresh salt and HKDF key each time`() {
+        val key = parseRawKey(newRawKeyHex())!!
+        val a = encryptText("abandon about", Secret.RawKey(key))
+        val b = encryptText("abandon about", Secret.RawKey(key))
+        fun header(t: String) = Header.parse(java.nio.ByteBuffer.wrap(java.util.Base64.getUrlDecoder().decode(t.removePrefix(TEXT_PREFIX))), Header.KIND_TEXT)
+        assertEquals(Header.KDF_RAW_KEY_HKDF, header(a).kdfId)
+        assertFalse(header(a).salt.contentEquals(header(b).salt))
+        assertFalse(header(a).salt.all { it == 0.toByte() })
+        assertEquals("abandon about", decryptText(a, Secret.RawKey(key)))
+        assertEquals(Aead.AES_256_GCM to true, inspectText(a))
+    }
+
+    @Test fun `texts from 1_9_0 with the key used directly still decrypt`() {
+        val key = parseRawKey(newRawKeyHex())!!
+        val header = Header(Header.KIND_TEXT, Aead.SERPENT_256_GCM, KdfParams(), Header.KDF_RAW_KEY, ByteArray(SALT_BYTES), randomBytes(NONCE_BYTES))
+        val aad = header.bytes()
+        val token = TEXT_PREFIX + java.util.Base64.getUrlEncoder().withoutPadding()
+            .encodeToString(aad + aead(Aead.SERPENT_256_GCM, true, key, header.nonce, aad, "zoo vote".toByteArray()))
+        assertEquals("zoo vote", decryptText(token, Secret.RawKey(key)))
+    }
+
+    @Test fun `headers asking for more than 256 MiB of Argon2 memory are refused`() {
+        KdfParams(MAX_KDF_MEMORY_KIB, 3, 1).checkSane()
+        try {
+            KdfParams(MAX_KDF_MEMORY_KIB + 1, 3, 1).checkSane()
+            fail()
+        } catch (e: CryptoFailure) {
+            // expected
+        }
+    }
 }

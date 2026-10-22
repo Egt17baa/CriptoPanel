@@ -10,7 +10,7 @@ val androidOnly = listOf(
     "**/market/InsightCards.kt",
     "**/MainActivity.kt",
     "**/CriptoPanelApp.kt",
-    "**/navigation/**",
+    "**/navigation/AppNavHost.kt",
     "**/alerts/android/**",
     "**/alerts/AlertsScreen.kt",
     "**/legal/TermsGateScreen.kt",

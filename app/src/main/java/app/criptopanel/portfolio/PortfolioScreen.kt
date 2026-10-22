@@ -378,11 +378,15 @@ private suspend fun exportTo(context: Context, uri: Uri, store: PortfolioStore):
 private suspend fun importFrom(context: Context, uri: Uri, store: PortfolioStore): String {
     val text = try {
         withContext(Dispatchers.IO) {
-            context.contentResolver.openInputStream(uri)?.use { it.readBytes().decodeToString() } ?: error("no stream")
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                val bytes = input.readAtMost(CSV_MAX_BYTES + 1)
+                if (bytes.size > CSV_MAX_BYTES) return@withContext null
+                bytes.decodeToString()
+            } ?: error("no stream")
         }
     } catch (e: Exception) {
         return "No se pudo leer el archivo"
-    }
+    } ?: return "El archivo es demasiado grande para ser una cartera de CriptoPanel"
     return when (val r = store.importCsv(text)) {
         is CsvImport.Ok -> "${r.operations.size} operaciones importadas" + if (r.skipped > 0) ", ${r.skipped} ya estaban" else ""
         is CsvImport.Error -> if (r.line > 0) "Fila ${r.line}: ${r.reason}. No se ha importado nada." else "${r.reason}. No se ha importado nada."

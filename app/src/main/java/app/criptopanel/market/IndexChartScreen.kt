@@ -211,6 +211,8 @@ private fun Context.isOnline(): Boolean {
 }
 
 private fun Context.openInBrowser(uri: Uri) {
+    // Only web links: a script in the page must not be able to fire other apps' deep links.
+    if (uri.scheme != "https" && uri.scheme != "http") return
     try {
         startActivity(Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     } catch (_: ActivityNotFoundException) {

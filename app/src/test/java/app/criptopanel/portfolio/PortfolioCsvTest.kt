@@ -50,4 +50,20 @@ class PortfolioCsvTest {
         val csv = listOf(buy(1.0, 1.0, date = "2999-01-01")).toCsv()
         assertEquals("La fecha es futura", (parseCsv(csv, emptySet()) as CsvImport.Error).reason)
     }
+
+    @Test fun `text cells cannot become spreadsheet formulas and survive the round trip`() {
+        val op = buy(1.0, 2.0).copy(note = "=HYPERLINK(\"http://x\")", name = "@evil", symbol = "+1")
+        val csv = listOf(op).toCsv()
+        val row = csv.lines()[1]
+        assertTrue(row.contains("'=HYPERLINK"))
+        assertTrue(row.contains(",'@evil,"))
+        val back = (parseCsv(csv, emptySet()) as CsvImport.Ok).operations.single()
+        assertEquals(op.note, back.note)
+        assertEquals(op.name, back.name)
+    }
+
+    @Test fun `reading stops at the limit`() {
+        assertEquals(10, java.io.ByteArrayInputStream(ByteArray(100)).readAtMost(10).size)
+        assertEquals(5, java.io.ByteArrayInputStream(ByteArray(5)).readAtMost(10).size)
+    }
 }

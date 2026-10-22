@@ -10,9 +10,15 @@ permissions:
   contents: write
 
 jobs:
-  # Test build for sideloading: release (R8-optimised) signed with the shared test key.
+  # Build for sideloading: release (R8-optimised). Signed with the private key from the repository secrets
+  # when they exist; the shared test key is public (it is in the repo), so anyone could sign an "update" with it.
   build:
     runs-on: ubuntu-latest
+    env:
+      KEYSTORE_BASE64: ${{ secrets.CRIPTOPANEL_KEYSTORE_BASE64 }}
+      CRIPTOPANEL_KEYSTORE_PASSWORD: ${{ secrets.CRIPTOPANEL_KEYSTORE_PASSWORD }}
+      CRIPTOPANEL_KEY_ALIAS: ${{ secrets.CRIPTOPANEL_KEY_ALIAS }}
+      CRIPTOPANEL_KEY_PASSWORD: ${{ secrets.CRIPTOPANEL_KEY_PASSWORD }}
     steps:
       - uses: actions/checkout@v5
 
@@ -20,6 +26,15 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
+
+      - name: Restore private signing key
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 --decode > upload.jks
+            echo "CRIPTOPANEL_KEYSTORE_FILE=upload.jks" >> "$GITHUB_ENV"
+          else
+            echo "::warning::Sin secretos de firma: el APK se firma con la clave de prueba pública. Ver docs/google-play/PUBLICAR.md"
+          fi
 
       - name: Test and build
         run: ./gradlew :app:testDebugUnitTest :app:lintRelease :app:assembleRelease --no-daemon

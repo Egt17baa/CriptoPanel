@@ -6,8 +6,30 @@ import java.util.UUID
 
 private val HEADER = listOf("fecha", "tipo", "moneda_id", "simbolo", "nombre", "cantidad", "precio_usd", "comision_usd", "nota", "id")
 
+/** Spreadsheets run a cell starting with one of these as a formula (CSV injection); such text gets a leading '. */
+private const val FORMULA_START = "=+-@\t\r"
+
 private fun field(value: String): String =
     if (value.any { it == ',' || it == '"' || it == '\n' || it == '\r' }) "\"${value.replace("\"", "\"\"")}\"" else value
+
+private fun text(value: String): String = if (value.firstOrNull()?.let { it in FORMULA_START } == true) "'$value" else value
+
+private fun untext(value: String): String = if (value.length > 1 && value[0] == '\'' && value[1] in FORMULA_START) value.substring(1) else value
+
+/** Larger files are refused before reading (a real portfolio CSV is a few KB). */
+const val CSV_MAX_BYTES = 5 * 1024 * 1024
+
+/** Up to [limit] bytes of the stream (InputStream.readNBytes needs Android 13). */
+fun java.io.InputStream.readAtMost(limit: Int): ByteArray {
+    val out = java.io.ByteArrayOutputStream()
+    val buf = ByteArray(8192)
+    while (out.size() < limit) {
+        val n = read(buf, 0, minOf(buf.size, limit - out.size()))
+        if (n < 0) break
+        out.write(buf, 0, n)
+    }
+    return out.toByteArray()
+}
 
 /** CSV with a header row, comma separated, decimals with a point; opens in any spreadsheet. */
 fun List<Operation>.toCsv(): String = buildString {
@@ -15,9 +37,9 @@ fun List<Operation>.toCsv(): String = buildString {
     chronological().forEach { op ->
         val type = if (op.type == OperationType.BUY) "compra" else "venta"
         val row = listOf(
-            op.date, type, op.coinId, op.symbol, op.name,
+            op.date, type, text(op.coinId), text(op.symbol), text(op.name),
             op.quantity.toBigDecimal().toPlainString(), op.priceUsd.toBigDecimal().toPlainString(),
-            op.feeUsd.toBigDecimal().toPlainString(), op.note, op.id,
+            op.feeUsd.toBigDecimal().toPlainString(), text(op.note), op.id,
         )
         appendLine(row.joinToString(",") { field(it) })
     }
@@ -80,7 +102,7 @@ fun parseCsv(text: String, existingIds: Set<String>): CsvImport {
             "venta", "sell" -> OperationType.SELL
             else -> return CsvImport.Error(line, "Tipo no válido: ${f[1]} (compra o venta)")
         }
-        val coinId = f[2].trim().ifEmpty { return CsvImport.Error(line, "Falta moneda_id") }
+        val coinId = untext(f[2].trim()).ifEmpty { return CsvImport.Error(line, "Falta moneda_id") }
         val quantity = number(f[5])?.takeIf { it > 0 } ?: return CsvImport.Error(line, "Cantidad no válida")
         val price = number(f[6])?.takeIf { it > 0 } ?: return CsvImport.Error(line, "Precio no válido")
         val fee = if (f[7].isBlank()) 0.0 else number(f[7])?.takeIf { it >= 0 } ?: return CsvImport.Error(line, "Comisión no válida")
@@ -92,14 +114,14 @@ fun parseCsv(text: String, existingIds: Set<String>): CsvImport {
         ops += Operation(
             id = id,
             coinId = coinId,
-            symbol = f[3].trim().uppercase().ifEmpty { coinId.uppercase() },
-            name = f[4].trim().ifEmpty { coinId },
+            symbol = untext(f[3].trim()).uppercase().ifEmpty { coinId.uppercase() },
+            name = untext(f[4].trim()).ifEmpty { coinId },
             type = type,
             quantity = quantity,
             priceUsd = price,
             feeUsd = fee,
             date = date.toString(),
-            note = f[8].trim().take(NOTE_MAX),
+            note = untext(f[8].trim()).take(NOTE_MAX),
         )
     }
     return CsvImport.Ok(ops, skipped)

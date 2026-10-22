@@ -39,6 +39,8 @@ import app.criptopanel.core.ui.NegativeColor
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
 import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -62,7 +64,7 @@ private fun Field(label: String, value: String, secret: Boolean = false, mono: B
                 Text(if (shown) value else "•".repeat(minOf(value.length, 16)), fontFamily = if (mono || secret) FontFamily.Monospace else FontFamily.Default)
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilledTonalButton(onClick = { copySensitive(context, scope, value) }) { Text("Copiar") }
+                FilledTonalButton(onClick = { copySensitive(context, value) }) { Text("Copiar") }
                 if (secret) OutlinedButton(onClick = { shown = !shown }) { Text(if (shown) "Ocultar" else "Mostrar") }
             }
         }
@@ -185,7 +187,15 @@ fun VaultEntryEditScreen(store: VaultStore, id: String?, initialType: EntryType,
                     OutlinedTextField(url, { url = it }, label = { Text("Web") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 }
                 EntryType.SEED -> {
-                    OutlinedTextField(seed, { seed = it }, label = { Text("Palabras de recuperación, separadas por espacios") }, minLines = 3, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(
+                        seed,
+                        { seed = it },
+                        label = { Text("Palabras de recuperación, separadas por espacios") },
+                        minLines = 3,
+                        // A password keyboard neither learns nor suggests the words, nor syncs them to the cloud.
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                     val (n, valid) = seedWordCount(seed)
                     if (n > 0) Text("$n palabras" + if (valid) " ✓" else " (lo habitual son 12, 15, 18, 21 o 24)", style = MaterialTheme.typography.bodySmall)
                     PasswordField(password, { password = it }, label = "Passphrase BIP-39 (opcional)")
