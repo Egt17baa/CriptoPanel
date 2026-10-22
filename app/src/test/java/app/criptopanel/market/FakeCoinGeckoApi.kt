@@ -9,6 +9,7 @@ class FakeCoinGeckoApi : CoinGeckoApi {
     val chartDays = mutableListOf<String>()
     val queries = mutableListOf<String>()
     val categories = mutableListOf<String?>()
+    val idLists = mutableListOf<String?>()
     var searchDelayMs = 0L
 
     fun failWith(t: Throwable?) { failure = t }
@@ -20,8 +21,8 @@ class FakeCoinGeckoApi : CoinGeckoApi {
     }
 
     override suspend fun markets(
-        vs: String, order: String, perPage: Int, page: Int, sparkline: Boolean, changes: String, category: String?,
-    ): List<CoinMarketDto> = serve { categories += category; decodeFixture("cg_markets.json") }
+        vs: String, order: String, perPage: Int, page: Int, sparkline: Boolean, changes: String, category: String?, ids: String?,
+    ): List<CoinMarketDto> = serve { categories += category; idLists += ids; decodeFixture("cg_markets.json") }
 
     override suspend fun coin(id: String, l: Boolean, t: Boolean, c: Boolean, d: Boolean): CoinDetailDto =
         serve { decodeFixture("cg_coin_bitcoin.json") }

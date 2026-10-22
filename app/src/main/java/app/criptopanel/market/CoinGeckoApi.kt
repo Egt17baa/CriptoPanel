@@ -15,6 +15,8 @@ interface CoinGeckoApi {
         @Query("price_change_percentage") changes: String = "1h,24h,7d",
         /** A CoinGecko category id (sector); null for the whole market. */
         @Query("category") category: String? = null,
+        /** Comma-separated CoinGecko ids; null for the whole market. */
+        @Query("ids") ids: String? = null,
     ): List<CoinMarketDto>
 
     @GET("coins/{id}")

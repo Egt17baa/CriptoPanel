@@ -2,6 +2,7 @@ package app.criptopanel.coins
 
 import app.criptopanel.market.CoinDetailDto
 import app.criptopanel.market.MarketChartDto
+import app.criptopanel.portfolio.PricePoint
 
 data class CoinDetail(
     val id: String,
@@ -45,3 +46,7 @@ fun CoinDetailDto.toDomain(): CoinDetail {
 }
 
 fun MarketChartDto.toPrices(): List<Double> = prices.mapNotNull { it.getOrNull(1) }
+
+/** Prices with their times; CoinGecko sends `[epochMillis, price]` pairs. */
+fun MarketChartDto.toPricePoints(): List<PricePoint> =
+    prices.mapNotNull { p -> if (p.size < 2) null else PricePoint(p[0].toLong(), p[1]) }

@@ -3,7 +3,9 @@ package app.criptopanel.market
 import app.criptopanel.coins.ChartRange
 import app.criptopanel.coins.CoinDetail
 import app.criptopanel.coins.CoinMarket
+import app.criptopanel.coins.toPricePoints
 import app.criptopanel.coins.toPrices
+import app.criptopanel.portfolio.PricePoint
 import app.criptopanel.coins.toDomain
 import app.criptopanel.core.network.AppError
 import app.criptopanel.core.network.Outcome
@@ -20,6 +22,8 @@ class MarketRepository(
     private val globalCache = TtlCache<GlobalMetrics>(now)
     private val topCache = TtlCache<List<CoinMarket>>(now)
     private val chartCaches = mutableMapOf<Pair<String, ChartRange>, TtlCache<List<Double>>>()
+    private val pointCaches = mutableMapOf<Pair<String, ChartRange>, TtlCache<List<PricePoint>>>()
+    private val idsCaches = mutableMapOf<String, TtlCache<List<CoinMarket>>>()
 
     suspend fun global(force: Boolean = false): Outcome<GlobalMetrics> =
         globalCache.get(force) { coinLore.global().first().toMetrics() }
@@ -39,6 +43,21 @@ class MarketRepository(
         withResolvedId(id) { geckoId ->
             synchronized(chartCaches) { chartCaches.getOrPut(geckoId to range) { TtlCache(now) } }
                 .get(force) { api.marketChart(geckoId, range.days).toPrices() }
+        }
+
+    /** Prices for exactly these coins (portfolio, favourites) in one request; none for an empty list. */
+    suspend fun marketsByIds(ids: Collection<String>, force: Boolean = false): Outcome<List<CoinMarket>> {
+        if (ids.isEmpty()) return Outcome.Ok(emptyList())
+        val key = ids.distinct().sorted().joinToString(",")
+        return synchronized(idsCaches) { idsCaches.getOrPut(key) { TtlCache(now) } }
+            .get(force) { api.markets(ids = key, perPage = 250, sparkline = true).map { it.toDomain() } }
+    }
+
+    /** Like [chart] but keeping each price's time, for the portfolio value history. */
+    suspend fun pricePoints(id: String, range: ChartRange, force: Boolean = false): Outcome<List<PricePoint>> =
+        withResolvedId(id) { geckoId ->
+            synchronized(pointCaches) { pointCaches.getOrPut(geckoId to range) { TtlCache(now) } }
+                .get(force) { api.marketChart(geckoId, range.days).toPricePoints() }
         }
 
     suspend fun search(q: String): Outcome<List<SearchCoin>> = apiCall { api.search(q).coins.map { it.toDomain() } }
