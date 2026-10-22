@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.criptopanel.coins.ChartRange
 import app.criptopanel.coins.CoinMarket
+import app.criptopanel.core.format.Money
 import app.criptopanel.core.network.Outcome
 import app.criptopanel.core.ui.UiState
 import app.criptopanel.core.ui.loading
@@ -81,8 +82,9 @@ class CalculatorViewModel(private val market: MarketRepository) : ViewModel() {
         _to.value = _to.value.better()
     }
 
+    /** Dollars per unit of [asset]; for the money side, per unit of the display currency. */
     fun usdPrice(asset: Asset): Double? = when (asset) {
-        Asset.Usd -> 1.0
+        Asset.Usd -> Money.current.toUsd(1.0)
         is Asset.Coin -> _prices.value.data?.get(asset.coin.id)?.price
     }
 
@@ -146,7 +148,8 @@ class WhatIfViewModel(private val market: MarketRepository, private val today: (
 
     fun result(): WhatIfResult? {
         val (points, price) = _data.value.data ?: return null
-        val a = parseAmount(_amount.value) ?: return null
+        // Typed in the display currency, converted at today's rate.
+        val a = parseAmount(_amount.value)?.let(Money.current::toUsd) ?: return null
         return simulate(points, price, a, _period.value, _monthly.value, today())
     }
 }

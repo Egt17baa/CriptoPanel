@@ -29,7 +29,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.criptopanel.core.format.Money
+import app.criptopanel.core.format.formatMoney
 import app.criptopanel.core.format.formatUsd
+import app.criptopanel.portfolio.parseAmount
 import app.criptopanel.core.ui.BackScaffold
 import app.criptopanel.core.ui.GlassCard
 import app.criptopanel.core.ui.NegativeColor
@@ -109,11 +112,20 @@ fun AlertFormScreen(vm: AlertFormViewModel, search: SearchViewModel, onDone: () 
                 OutlinedTextField(
                     value = form.threshold,
                     onValueChange = { v -> vm.update { it.copy(threshold = v) } },
-                    label = { Text(if (form.kind.isPercent) "Porcentaje (%)" else "Valor ($)") },
+                    label = { Text(if (form.kind.isPercent) "Porcentaje (%)" else "Valor (${Money.symbol})") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth(),
                 )
+                if (!form.kind.isPercent && Money.current.code != "USD") {
+                    parseAmount(form.threshold)?.let { v ->
+                        Text(
+                            "Se vigila en dólares: ${formatMoney(v)} ≈ ${formatMoney(Money.current.toUsd(v), symbol = "$")} al cambio de hoy",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
                 OutlinedTextField(
                     value = form.note,
                     onValueChange = { v -> vm.update { it.copy(note = v.replace("\n", " ").take(ALERT_NOTE_MAX)) } },

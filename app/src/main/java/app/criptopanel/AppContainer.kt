@@ -7,7 +7,12 @@ import app.criptopanel.alerts.BINANCE_REST_URL
 import app.criptopanel.alerts.BinanceApi
 import app.criptopanel.alerts.BinanceHistoryApi
 import app.criptopanel.alerts.OkHttpPriceStream
+import app.criptopanel.core.format.Money
 import app.criptopanel.core.network.ALTERNATIVE_BASE_URL
+import app.criptopanel.core.network.FRANKFURTER_BASE_URL
+import app.criptopanel.core.network.FrankfurterApi
+import app.criptopanel.core.network.FxRepository
+import app.criptopanel.core.network.Outcome
 import app.criptopanel.core.network.COINGECKO_BASE_URL
 import app.criptopanel.core.network.COINLORE_BASE_URL
 import app.criptopanel.core.network.DEFILLAMA_BASE_URL
@@ -28,6 +33,7 @@ import app.criptopanel.market.SentimentApi
 import app.criptopanel.portfolio.HistoricalPrices
 import app.criptopanel.portfolio.PortfolioStore
 import java.io.File
+import java.time.LocalDate
 
 /** Also named in res/xml/backup_rules.xml and data_extraction_rules.xml. */
 const val PORTFOLIO_FILE = "portfolio.json"
@@ -52,6 +58,21 @@ class AppContainer(demoKey: String, filesDir: File, notifier: AlertNotifier) {
 
     /** Portfolio and favourites; the only data the app keeps (and backs up). */
     val portfolioStore = PortfolioStore(File(filesDir, PORTFOLIO_FILE))
+
+    val fx = FxRepository(retrofit(FRANKFURTER_BASE_URL, client).create(FrankfurterApi::class.java))
+
+    /** Display-currency units per dollar on [date]: 1 in USD; the ECB rate of that day in EUR (today's if unknown). */
+    suspend fun displayPerUsdOn(date: LocalDate): Double {
+        val c = Money.current
+        if (c.code != "EUR") return 1.0
+        return (fx.eurPerUsdOn(date, date) as? Outcome.Ok)?.value?.invoke(date) ?: c.perUsd
+    }
+
+    /** Per-day display rates for a span, or null when showing USD (or the rates cannot be fetched). */
+    suspend fun displayRates(from: LocalDate, to: LocalDate): ((LocalDate) -> Double)? {
+        if (Money.current.code != "EUR") return null
+        return (fx.eurPerUsdOn(from, to) as? Outcome.Ok)?.value
+    }
 
     /** Prices on past days for the operation form. */
     val historicalPrices = HistoricalPrices(coinGecko, retrofit(BINANCE_REST_URL, client).create(BinanceHistoryApi::class.java))

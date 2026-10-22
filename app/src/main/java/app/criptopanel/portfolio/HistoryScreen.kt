@@ -43,12 +43,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.criptopanel.core.format.formatMoney
 import app.criptopanel.core.format.formatQuantity
 import app.criptopanel.core.format.formatUsd
 import app.criptopanel.core.ui.EmptyMessage
 import app.criptopanel.core.ui.NegativeColor
 import app.criptopanel.core.ui.PositiveColor
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
@@ -62,8 +64,14 @@ fun HistoryScreen(
     onEdit: (operationId: String) -> Unit,
     onAdd: (coinId: String?) -> Unit,
     onBack: () -> Unit,
+    displayRates: suspend (LocalDate, LocalDate) -> ((LocalDate) -> Double)? = { _, _ -> null },
 ) {
     val data by store.data.collectAsStateWithLifecycle()
+    // Prices shown in the display currency of each operation's own day.
+    var rates by remember { mutableStateOf<((LocalDate) -> Double)?>(null) }
+    LaunchedEffect(data.operations) {
+        data.operations.minOfOrNull { it.localDate }?.let { rates = displayRates(it, LocalDate.now()) }
+    }
     var coinId by rememberSaveable { mutableStateOf(initialCoinId) }
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -106,6 +114,7 @@ fun HistoryScreen(
                 items(shown, key = { it.id }) { op ->
                     OperationRow(
                         op,
+                        perUsd = rates?.invoke(op.localDate),
                         onClick = { onEdit(op.id) },
                         onDelete = {
                             scope.launch {
@@ -127,7 +136,8 @@ fun HistoryScreen(
 }
 
 @Composable
-private fun OperationRow(op: Operation, onClick: () -> Unit, onDelete: () -> Unit) {
+private fun OperationRow(op: Operation, perUsd: Double?, onClick: () -> Unit, onDelete: () -> Unit) {
+    val money: (Double) -> String = { usd -> if (perUsd != null) formatMoney(usd * perUsd) else formatUsd(usd) }
     val buy = op.type == OperationType.BUY
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -139,16 +149,16 @@ private fun OperationRow(op: Operation, onClick: () -> Unit, onDelete: () -> Uni
                 Text(if (buy) "Compra" else "Venta", color = if (buy) PositiveColor else NegativeColor, style = MaterialTheme.typography.labelLarge)
                 Text(op.localDate.format(dateFormat), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Text("${formatQuantity(op.quantity)} ${op.symbol} a ${formatUsd(op.priceUsd)}", maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text("${formatQuantity(op.quantity)} ${op.symbol} a ${money(op.priceUsd)}", maxLines = 1, overflow = TextOverflow.Ellipsis)
             val extra = listOfNotNull(
-                "Comisión ${formatUsd(op.feeUsd)}".takeIf { op.feeUsd > 0 },
+                "Comisión ${money(op.feeUsd)}".takeIf { op.feeUsd > 0 },
                 op.note.takeIf { it.isNotBlank() },
             ).joinToString(" · ")
             if (extra.isNotEmpty()) {
                 Text(extra, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
         }
-        Text(formatUsd(op.quantity * op.priceUsd), style = MaterialTheme.typography.bodyMedium)
+        Text(money(op.quantity * op.priceUsd), style = MaterialTheme.typography.bodyMedium)
         IconButton(onClick = onDelete) { Icon(Icons.Default.Delete, contentDescription = "Borrar operación") }
     }
 }

@@ -37,6 +37,8 @@ Diseño Material 3 siempre oscuro, en gris y negro, con paneles de vidrio sobre 
   ¿Y si hubiera invertido? (de una vez o DCA mensual, último año), y Términos, Privacidad, Fuentes y Cómo calculamos.
 - **Aprende** (en Más): 10 lecciones sin conexión (orígenes, blockchain, criptografía, wallets calientes y frías, Ethereum,
   stablecoins, DeFi, seguridad, cómo leer CriptoPanel) con resumen y mini-test, y un glosario de 42 términos.
+- **Euros** (Más → Preferencias → Divisa): todo se ve en euros con el cambio del BCE (Frankfurter). La cartera usa
+  el cambio del día de cada operación; los formularios se escriben en euros y se guardan en dólares.
 - Al abrir la app por primera vez hay que aceptar los **términos** (`docs/google-play/terminos.md`). En Cartera, Alertas,
   Rendimientos y las herramientas se recuerda: *datos informativos, no asesoramiento financiero*.
 
@@ -51,6 +53,7 @@ Diseño Material 3 siempre oscuro, en gris y negro, con paneles de vidrio sobre 
 - [DefiLlama API](https://api-docs.defillama.com/) (`api.llama.fi`, `stablecoins.llama.fi`, `yields.llama.fi`): TVL por red,
   histórico y protocolos (sin exchanges centralizados), stablecoins, volumen de DEX, comisiones e ingresos, y rendimientos.
 - [Binance market data](https://developers.binance.com/docs/binance-spot-api-docs/web-socket-streams) (`data-api.binance.vision`, `data-stream.binance.vision`): precios en directo para las alertas.
+- [Frankfurter](https://frankfurter.dev) (`api.frankfurter.dev`): tipo de cambio euro/dólar del BCE.
 - [Alternative.me](https://alternative.me/crypto/fear-and-greed-index/) (`api.alternative.me`): índice de miedo y codicia.
 
 El plan gratuito de CoinGecko limita las peticiones por minuto (y en redes móviles muchas personas comparten IP).
@@ -95,7 +98,7 @@ gradle -p jvm-check test
 
 ## Estado de verificación
 
-- Versión 1.5.0: `./gradlew :app:testDebugUnitTest :app:lintRelease :app:assembleRelease` compila, 173 tests pasan
+- Versión 1.6.0: `./gradlew :app:testDebugUnitTest :app:lintRelease :app:assembleRelease` compila, 173 tests pasan
   (también en `jvm-check`) y lint no da errores.
 - Los fixtures de las fuentes nuevas son respuestas reales de CoinGecko, DefiLlama y Alternative.me (22-10-2026), recortadas.
 - Falta probarla en un móvil o emulador, sobre todo el aspecto de vidrio líquido: instala el APK y revisa cada pantalla.

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -40,10 +41,13 @@ fun MoreScreen(
     onWhatIf: () -> Unit,
     onAlerts: () -> Unit,
     onLegal: (LegalDoc) -> Unit,
+    currencyCode: String,
+    currencyNote: String?,
+    onCurrency: (String) -> Unit,
 ) {
     val tools = listOf(
         Entry("⇄", "Comparador", "Hasta 4 monedas lado a lado", onCompare),
-        Entry("＝", "Calculadora", "Cripto ⇄ dólares y entre criptos", onCalculator),
+        Entry("＝", "Calculadora", "Cripto ⇄ dinero y entre criptos", onCalculator),
         Entry("↗", "¿Y si hubiera invertido?", "De una vez o comprando cada mes", onWhatIf),
         Entry("🔔", "Alertas", if (activeAlerts == 0) "Ninguna activa" else "$activeAlerts activas · en directo", onAlerts),
     )
@@ -79,6 +83,26 @@ fun MoreScreen(
                 )
             }
             item { Section("Herramientas", tools) }
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("Preferencias", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(horizontal = 4.dp))
+                    GlassCard(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("Divisa", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                FilterChip(selected = currencyCode == "USD", onClick = { onCurrency("USD") }, label = { Text("Dólar · USD") })
+                                FilterChip(selected = currencyCode == "EUR", onClick = { onCurrency("EUR") }, label = { Text("Euro · EUR") })
+                            }
+                            Text(
+                                currencyNote ?: "En euros, todo se convierte con el cambio del BCE. Tu cartera usa el cambio del día de cada " +
+                                    "operación; los gráficos de TradingView y los filtros de TVL siguen en dólares.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+            }
             item { Section("Información", info) }
             item {
                 GlassCard(Modifier.fillMaxWidth()) {

@@ -86,6 +86,8 @@ class OperationViewModel(
     private val editId: String?,
     coinId: String?,
     private val today: () -> LocalDate = LocalDate::now,
+    /** Display-currency units per dollar on a date: the form is typed in the display currency, saved in USD. */
+    private val perUsdOn: suspend (LocalDate) -> Double = { 1.0 },
 ) : ViewModel() {
     private val _form = MutableStateFlow(OperationForm(date = today()))
     val form: StateFlow<OperationForm> = _form.asStateFlow()
@@ -113,15 +115,16 @@ class OperationViewModel(
             store.load()
             val existing = editId?.let { id -> store.data.value.operations.firstOrNull { it.id == id } }
             if (existing != null) {
+                val r = perUsdOn(existing.localDate)
                 _form.value = OperationForm(
                     type = existing.type,
                     coin = FormCoin(existing.coinId, existing.symbol, existing.name, existing.imageUrl),
                     mode = AmountMode.QUANTITY,
                     amount = existing.quantity.toBigDecimal().toPlainString(),
-                    price = existing.priceUsd.toBigDecimal().toPlainString(),
+                    price = plain(existing.priceUsd * r),
                     priceEdited = true,
                     date = existing.localDate,
-                    fee = if (existing.feeUsd == 0.0) "" else existing.feeUsd.toBigDecimal().toPlainString(),
+                    fee = if (existing.feeUsd == 0.0) "" else plain(existing.feeUsd * r, 2),
                     note = existing.note,
                 )
                 _priceSource.value = PriceSource.Typed
@@ -206,7 +209,8 @@ class OperationViewModel(
                 dated?.price to (dated?.let { PriceSource.OnDate(date, it.source) } ?: PriceSource.Missing)
             }
             if (_form.value.priceEdited) return@launch // The user typed a price meanwhile.
-            _form.update { it.copy(price = price?.let(::plain) ?: "") }
+            val r = perUsdOn(date)
+            _form.update { it.copy(price = price?.let { usd -> plain(usd * r) } ?: "") }
             _priceSource.value = source
         }
     }
@@ -215,7 +219,9 @@ class OperationViewModel(
         when (val r = _form.value.validate(editId ?: UUID.randomUUID().toString(), today())) {
             is FormResult.Invalid -> _error.value = r.message
             is FormResult.Valid -> viewModelScope.launch {
-                val problem = store.upsert(r.operation)
+                val op = r.operation
+                val perUsd = perUsdOn(op.localDate)
+                val problem = store.upsert(op.copy(priceUsd = op.priceUsd / perUsd, feeUsd = op.feeUsd / perUsd))
                 if (problem == null) _saved.value = true else _error.value = problem
             }
         }

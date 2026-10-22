@@ -25,6 +25,7 @@ que reciben la información técnica habitual de cualquier conexión a Internet 
 - CoinLore (<https://www.coinlore.com/privacy-policy>)
 - DefiLlama, también para stablecoins y rendimientos (<https://defillama.com/privacy-policy>)
 - Alternative.me, para el índice de miedo y codicia (<https://alternative.me/>)
+- Frankfurter, para el tipo de cambio euro/dólar del BCE (<https://frankfurter.dev>)
 - Binance, solo para leer precios públicos en directo cuando tienes alertas activas (<https://www.binance.com/es/privacy>)
 - TradingView, para los gráficos de índices (<https://www.tradingview.com/privacy-policy/>).
   El widget de TradingView puede usar cookies o almacenamiento local propios.

@@ -1,5 +1,6 @@
 package app.criptopanel.tools
 
+import app.criptopanel.core.format.Money
 import app.criptopanel.portfolio.FormCoin
 import app.criptopanel.portfolio.PricePoint
 import java.time.LocalDate
@@ -9,8 +10,9 @@ import java.time.ZoneId
 sealed interface Asset {
     val label: String
 
+    /** Money in the display currency (USD or EUR). */
     data object Usd : Asset {
-        override val label = "USD"
+        override val label: String get() = Money.current.code
     }
 
     data class Coin(val coin: FormCoin) : Asset {

@@ -9,19 +9,40 @@ import kotlin.math.abs
 
 private const val DASH = "—"
 
+/** The currency amounts are shown in; every amount is stored and fetched in USD. */
+data class DisplayCurrency(val code: String, val symbol: String, val perUsd: Double) {
+    fun fromUsd(usd: Double): Double = usd * perUsd
+    fun toUsd(amount: Double): Double = amount / perUsd
+
+    companion object {
+        val USD = DisplayCurrency("USD", "$", 1.0)
+        fun eur(perUsd: Double) = DisplayCurrency("EUR", "€", perUsd)
+    }
+}
+
+/** Process-wide display currency, set from the user's preference at start-up (USD until a EUR rate is known). */
+object Money {
+    @Volatile var current: DisplayCurrency = DisplayCurrency.USD
+    val symbol: String get() = current.symbol
+}
+
 private val compactSteps = listOf(1.0 to "", 1e3 to " K", 1e6 to " M", 1e9 to " B", 1e12 to " T")
 
 private fun twoDecimals(locale: Locale, pattern: String = "#,##0.00") =
     DecimalFormat(pattern, DecimalFormatSymbols.getInstance(locale))
 
-/** Price in USD. Values below 1 keep 4 significant digits so tiny prices never read as 0,00. */
-fun formatUsd(value: Double?, locale: Locale = Locale.getDefault()): String {
+/** A USD price shown in the display currency. Values below 1 keep 4 significant digits so tiny prices never read as 0,00. */
+fun formatUsd(value: Double?, locale: Locale = Locale.getDefault(), currency: DisplayCurrency = Money.current): String =
+    formatMoney(value?.let(currency::fromUsd), locale, currency.symbol)
+
+/** An amount already in the display currency (e.g. what the user typed in euros). */
+fun formatMoney(value: Double?, locale: Locale = Locale.getDefault(), symbol: String = Money.symbol): String {
     if (value == null || value.isNaN()) return DASH
-    if (abs(value) >= 1 || value == 0.0) return "${twoDecimals(locale).format(value)} $"
+    if (abs(value) >= 1 || value == 0.0) return "${twoDecimals(locale).format(value)} $symbol"
     var rounded = BigDecimal(value).round(MathContext(4)).stripTrailingZeros()
     if (rounded.scale() < 2) rounded = rounded.setScale(2)
     val separator = DecimalFormatSymbols.getInstance(locale).decimalSeparator
-    return "${rounded.toPlainString().replace('.', separator)} $"
+    return "${rounded.toPlainString().replace('.', separator)} $symbol"
 }
 
 /** Large amounts with K/M/B/T suffixes and no currency, e.g. "19,80 M". */
@@ -34,9 +55,9 @@ fun formatCompact(value: Double?, locale: Locale = Locale.getDefault()): String 
     return "${twoDecimals(locale).format(value / divisor)}$suffix"
 }
 
-/** Large USD amounts with K/M/B/T suffixes, e.g. "3,21 T $". */
-fun formatCompactUsd(value: Double?, locale: Locale = Locale.getDefault()): String =
-    if (value == null || value.isNaN()) DASH else "${formatCompact(value, locale)} $"
+/** Large USD amounts in the display currency with K/M/B/T suffixes, e.g. "3,21 T $". */
+fun formatCompactUsd(value: Double?, locale: Locale = Locale.getDefault(), currency: DisplayCurrency = Money.current): String =
+    if (value == null || value.isNaN()) DASH else "${formatCompact(currency.fromUsd(value), locale)} ${currency.symbol}"
 
 /** Signed percentage, e.g. "+2,35 %". */
 fun formatPercent(value: Double?, locale: Locale = Locale.getDefault()): String {
@@ -50,8 +71,8 @@ fun formatQuantity(value: Double?, locale: Locale = Locale.getDefault()): String
     return DecimalFormat("#,##0.########", DecimalFormatSymbols.getInstance(locale)).format(value)
 }
 
-/** Signed USD amount, e.g. "+1.204,10 $"; for profits and losses. */
-fun formatSignedUsd(value: Double?, locale: Locale = Locale.getDefault()): String {
+/** Signed USD amount in the display currency, e.g. "+1.204,10 $"; for profits and losses. */
+fun formatSignedUsd(value: Double?, locale: Locale = Locale.getDefault(), currency: DisplayCurrency = Money.current): String {
     if (value == null || value.isNaN()) return DASH
-    return "${twoDecimals(locale, "+#,##0.00;-#,##0.00").format(value)} $"
+    return "${twoDecimals(locale, "+#,##0.00;-#,##0.00").format(currency.fromUsd(value))} ${currency.symbol}"
 }

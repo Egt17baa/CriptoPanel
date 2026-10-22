@@ -20,17 +20,29 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 
 /** The value history asks CoinGecko once per coin, so only the largest positions are drawn. */
 const val SERIES_MAX_COINS = 10
 
-class PortfolioViewModel(private val store: PortfolioStore, private val market: MarketRepository) : ViewModel() {
+class PortfolioViewModel(
+    private val store: PortfolioStore,
+    private val market: MarketRepository,
+    /** Display-currency rates per day for a span, or null in USD (or when unavailable). */
+    private val displayRates: suspend (LocalDate, LocalDate) -> ((LocalDate) -> Double)? = { _, _ -> null },
+    private val perUsdNow: () -> Double = { 1.0 },
+) : ViewModel() {
     val data: StateFlow<PortfolioData> = store.data
 
     private val _prices = MutableStateFlow(UiState<Map<String, CoinMarket>>())
     val prices: StateFlow<UiState<Map<String, CoinMarket>>> = _prices.asStateFlow()
 
-    val summary: StateFlow<PortfolioSummary> = combine(data, _prices) { d, p -> summarize(positions(d.operations), p.data.orEmpty()) }
+    private val rates = MutableStateFlow<((LocalDate) -> Double)?>(null)
+
+    val summary: StateFlow<PortfolioSummary> = combine(data, _prices, rates) { d, p, r ->
+        val ops = if (r == null) d.operations else d.operations.inDisplayCurrency(r, perUsdNow())
+        summarize(positions(ops), p.data.orEmpty())
+    }
         .stateIn(viewModelScope, SharingStarted.Eagerly, summarize(emptyList(), emptyMap()))
 
     /** Favourites with their market data, in the order they were starred; unknown prices are left out until they load. */
@@ -50,7 +62,13 @@ class PortfolioViewModel(private val store: PortfolioStore, private val market: 
         viewModelScope.launch { store.load() }
         // A new coin or favourite needs its price; a new operation changes the history.
         viewModelScope.launch { data.map { trackedIds(it) }.distinctUntilChanged().collect { refreshPrices(force = false) } }
-        viewModelScope.launch { data.map { it.operations }.distinctUntilChanged().collect { loadSeries(force = false) } }
+        viewModelScope.launch {
+            data.map { it.operations }.distinctUntilChanged().collect { ops ->
+                loadSeries(force = false)
+                val first = ops.minOfOrNull { it.localDate }
+                if (first != null) rates.value = displayRates(first, LocalDate.now())
+            }
+        }
     }
 
     private fun trackedIds(d: PortfolioData): List<String> =

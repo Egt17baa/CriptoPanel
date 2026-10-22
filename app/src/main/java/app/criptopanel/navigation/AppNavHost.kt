@@ -90,6 +90,12 @@ import app.criptopanel.learn.LessonScreen
 import app.criptopanel.learn.LearnScreen
 import app.criptopanel.learn.LESSONS
 import app.criptopanel.learn.GlossaryScreen
+import app.criptopanel.core.ui.message
+import app.criptopanel.core.savedCurrencyCode
+import app.criptopanel.core.saveCurrency
+import app.criptopanel.core.network.Outcome
+import app.criptopanel.core.format.Money
+import android.app.Activity
 
 private data class Tab(val route: String, val label: String, val icon: ImageVector)
 
@@ -139,6 +145,13 @@ fun AppNavHost(pendingRoute: MutableStateFlow<String?> = MutableStateFlow(null))
     }
 
     val alertsData by alertStore.data.collectAsStateWithLifecycle()
+    var currencyNote by remember { mutableStateOf<String?>(null) }
+    // In euros, refresh the saved rate at start-up (the last known one is used meanwhile and offline).
+    LaunchedEffect(Unit) {
+        if (savedCurrencyCode(context) == "EUR") {
+            (container.fx.eurPerUsd() as? Outcome.Ok)?.let { saveCurrency(context, "EUR", it.value) }
+        }
+    }
     var termsOk by remember { mutableStateOf(termsAccepted(context)) }
 
     Box(Modifier.fillMaxSize()) {
@@ -249,7 +262,9 @@ fun AppNavHost(pendingRoute: MutableStateFlow<String?> = MutableStateFlow(null))
                         alerts = viewModel { AlertsViewModel(alertStore, container.alertMonitor, container.marketRepository, store) },
                         onAddAlert = { onAddAlert(null) },
                         onEditAlert = { id -> nav.navigate("alert?id=${Uri.encode(id)}") },
-                        vm = viewModel { PortfolioViewModel(store, container.marketRepository) },
+                        vm = viewModel {
+                            PortfolioViewModel(store, container.marketRepository, container::displayRates, { Money.current.perUsd })
+                        },
                         store = store,
                         onCoin = onCoin,
                         onAddOperation = { onAddOperation(null) },
@@ -266,7 +281,7 @@ fun AppNavHost(pendingRoute: MutableStateFlow<String?> = MutableStateFlow(null))
                     val coinId = entry.arguments?.getString("coinId")
                     val editId = entry.arguments?.getString("id")
                     OperationScreen(
-                        vm = viewModel { OperationViewModel(store, container.marketRepository, container.historicalPrices, editId, coinId) },
+                        vm = viewModel { OperationViewModel(store, container.marketRepository, container.historicalPrices, editId, coinId, perUsdOn = container::displayPerUsdOn) },
                         search = viewModel(key = "operation-search") { SearchViewModel(container.marketRepository) },
                         onDone = { nav.popBackStack() },
                     )
@@ -291,6 +306,7 @@ fun AppNavHost(pendingRoute: MutableStateFlow<String?> = MutableStateFlow(null))
                     arguments = listOf(navArgument("coinId") { type = NavType.StringType; nullable = true; defaultValue = null }),
                 ) { entry ->
                     HistoryScreen(
+                        displayRates = container::displayRates,
                         store = store,
                         initialCoinId = entry.arguments?.getString("coinId"),
                         onEdit = { opId -> nav.navigate("operation?id=${Uri.encode(opId)}") },
@@ -323,6 +339,24 @@ fun AppNavHost(pendingRoute: MutableStateFlow<String?> = MutableStateFlow(null))
                         onWhatIf = { nav.navigate("whatif") },
                         onAlerts = { nav.navigate("portfolio?tab=2") },
                         onLegal = { doc -> nav.navigate("legal/${doc.name}") },
+                        currencyCode = Money.current.code,
+                        currencyNote = currencyNote,
+                        onCurrency = { code ->
+                            scope.launch {
+                                if (code == "EUR") {
+                                    when (val r = container.fx.eurPerUsd(force = true)) {
+                                        is Outcome.Ok -> {
+                                            saveCurrency(context, "EUR", r.value)
+                                            (context as? Activity)?.recreate()
+                                        }
+                                        is Outcome.Err -> currencyNote = "No se pudo obtener el cambio euro/dólar (${r.error.message()}). Inténtalo de nuevo."
+                                    }
+                                } else if (Money.current.code != "USD") {
+                                    saveCurrency(context, "USD", null)
+                                    (context as? Activity)?.recreate()
+                                }
+                            }
+                        },
                     )
                 }
                 composable("learn") {

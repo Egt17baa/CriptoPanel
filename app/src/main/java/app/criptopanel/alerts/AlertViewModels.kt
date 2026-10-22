@@ -2,6 +2,7 @@ package app.criptopanel.alerts
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.criptopanel.core.format.Money
 import app.criptopanel.core.network.Outcome
 import app.criptopanel.market.MarketRepository
 import app.criptopanel.portfolio.FormCoin
@@ -115,7 +116,8 @@ class AlertFormViewModel(
                     coin = existing.coinId?.let { FormCoin(it, existing.symbol, existing.name, existing.imageUrl) },
                     portfolio = existing.coinId == null,
                     kind = existing.kind,
-                    threshold = existing.threshold.toBigDecimal().stripTrailingZeros().toPlainString(),
+                    threshold = (if (existing.kind.isPercent) existing.threshold else Money.current.fromUsd(existing.threshold))
+                        .toBigDecimal().setScale(2, java.math.RoundingMode.HALF_UP).stripTrailingZeros().toPlainString(),
                     windowMinutes = existing.windowMinutes ?: 60,
                     direction = existing.direction,
                     note = existing.note,
@@ -158,7 +160,8 @@ class AlertFormViewModel(
             _error.value = "Elige una moneda o tu cartera"
             return
         }
-        val value = parseAmount(f.threshold)
+        // Money thresholds are typed in the display currency and watched in USD at today's rate.
+        val value = parseAmount(f.threshold)?.let { if (f.kind.isPercent) it else Money.current.toUsd(it) }
         if (value == null) {
             _error.value = if (f.kind.isPercent) "Porcentaje no válido" else "Valor no válido"
             return

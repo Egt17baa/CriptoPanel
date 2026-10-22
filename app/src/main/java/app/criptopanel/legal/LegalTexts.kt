@@ -38,7 +38,7 @@ val TERMS = listOf(
     LegalSection(
         "3. Datos de terceros",
         "Los precios, índices, TVL, rendimientos y demás datos proceden de servicios de terceros (CoinGecko, CoinLore, DefiLlama, " +
-            "Binance, Alternative.me y TradingView). No garantizamos que sean exactos, completos ni que estén disponibles en todo momento. " +
+            "Binance, Alternative.me, el BCE a través de Frankfurter y TradingView). No garantizamos que sean exactos, completos ni que estén disponibles en todo momento. " +
             "Pueden llegar con retraso o contener errores; cuando una fuente falla, la app muestra el último dato válido o «sin datos».",
     ),
     LegalSection(
@@ -105,6 +105,7 @@ val SOURCES = listOf(
     Source("DefiLlama", "TVL por red y protocolo, stablecoins, volumen de DEX, comisiones e ingresos, rendimientos.", "https://defillama.com/docs/api"),
     Source("Binance (datos de mercado)", "Precios en directo para las alertas y precios antiguos de la cartera.", "https://developers.binance.com/docs/binance-spot-api-docs"),
     Source("Alternative.me", "Índice de miedo y codicia.", "https://alternative.me/crypto/fear-and-greed-index/"),
+    Source("BCE vía Frankfurter", "Tipo de cambio euro/dólar, de hoy y de días pasados, para ver la app en euros.", "https://frankfurter.dev"),
     Source("TradingView", "Gráficos de velas de TOTAL, TOTAL2, TOTAL3 y dominancias.", "https://www.tradingview.com/widget-docs/"),
 )
 
@@ -133,6 +134,12 @@ val METHOD = listOf(
         "Alertas en directo",
         "Las monedas que cotizan en Binance (par con USDT y precio a menos de un 3 % del de CoinGecko) se siguen en directo, una " +
             "actualización por segundo; el resto se comprueba cada minuto con CoinGecko. Una alerta que salta se desactiva sola.",
+    ),
+    LegalSection(
+        "En euros",
+        "Los datos llegan en dólares y se convierten con el cambio oficial del BCE. Los precios de mercado usan el cambio de hoy. " +
+            "En tu cartera, cada compra y venta se convierte con el cambio de su propio día, así que el coste en euros es lo que pagaste " +
+            "en euros y la ganancia incluye la variación del euro frente al dólar. Las alertas se vigilan en dólares al cambio del día en que las creas.",
     ),
     LegalSection(
         "¿Y si hubiera invertido?",

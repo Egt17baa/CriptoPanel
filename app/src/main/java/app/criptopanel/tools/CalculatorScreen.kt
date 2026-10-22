@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.criptopanel.core.format.formatMoney
 import app.criptopanel.core.format.formatQuantity
 import app.criptopanel.core.format.formatUsd
 import app.criptopanel.core.ui.BackScaffold
@@ -35,7 +36,7 @@ import app.criptopanel.search.SearchViewModel
 import coil3.compose.AsyncImage
 
 private fun format(asset: Asset, value: Double?): String =
-    if (asset == Asset.Usd) formatUsd(value) else "${formatQuantity(value)} ${asset.label}"
+    if (asset == Asset.Usd) formatMoney(value) else "${formatQuantity(value)} ${asset.label}"
 
 @Composable
 fun CalculatorScreen(vm: CalculatorViewModel, search: SearchViewModel, onBack: () -> Unit) {
@@ -94,8 +95,8 @@ private fun AssetCard(label: String, asset: Asset, onChange: () -> Unit, onUsd: 
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (asset is Asset.Coin) AsyncImage(model = asset.coin.imageUrl, contentDescription = null, modifier = Modifier.size(24.dp))
-            Text(if (asset is Asset.Coin) "${asset.coin.name} (${asset.label})" else "Dólar (USD)", modifier = Modifier.weight(1f))
-            if (asset is Asset.Coin) TextButton(onClick = onUsd) { Text("USD") }
+            Text(if (asset is Asset.Coin) "${asset.coin.name} (${asset.label})" else if (asset.label == "EUR") "Euro (EUR)" else "Dólar (USD)", modifier = Modifier.weight(1f))
+            if (asset is Asset.Coin) TextButton(onClick = onUsd) { Text(Asset.Usd.label) }
             TextButton(onClick = onChange) { Text("Moneda") }
         }
     }

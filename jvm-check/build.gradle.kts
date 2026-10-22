@@ -14,6 +14,7 @@ val androidOnly = listOf(
     "**/alerts/android/**",
     "**/alerts/AlertsScreen.kt",
     "**/legal/TermsGateScreen.kt",
+    "**/core/CurrencyPrefs.kt",
     "**/core/ui/LineChart.kt",
     "**/core/ui/AutoRefresh.kt",
     "**/core/ui/StatusViews.kt",

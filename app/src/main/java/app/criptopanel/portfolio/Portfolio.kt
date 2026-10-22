@@ -205,6 +205,16 @@ fun valueSeries(
     }
 }
 
+/**
+ * Operations re-priced so the portfolio maths, done in "today's dollars", come out right in another display currency:
+ * each price and fee is converted with the rate of its own day ([perUsdOn]) and back with today's ([perUsdNow]).
+ * The cost of a euro purchase then stays what was really paid in euros.
+ */
+fun List<Operation>.inDisplayCurrency(perUsdOn: (LocalDate) -> Double, perUsdNow: Double): List<Operation> = map { op ->
+    val k = perUsdOn(op.localDate) / perUsdNow
+    op.copy(priceUsd = op.priceUsd * k, feeUsd = op.feeUsd * k)
+}
+
 /** Quantity of [coinId] held at the end of [date], leaving out the operation being edited. */
 fun heldOn(operations: List<Operation>, coinId: String, date: LocalDate, excludeId: String? = null): Double =
     operations

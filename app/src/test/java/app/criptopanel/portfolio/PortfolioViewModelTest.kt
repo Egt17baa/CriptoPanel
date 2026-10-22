@@ -178,4 +178,18 @@ class PortfolioViewModelTest {
         assertEquals(PriceSource.Typed, vm.priceSource.value)
         assertNull(vm.error.value)
     }
+
+    @Test fun `euro form is saved in dollars at the day's rate`() = runTest(main.dispatcher) {
+        val vm = OperationViewModel(store, market, history, null, "bitcoin", today = { today }, perUsdOn = { 0.5 })
+        advanceUntilIdle()
+        // The price is shown in the display currency: 98 123,45 $ × 0,5.
+        assertEquals("49061.725", vm.form.value.price)
+        vm.update { it.copy(mode = AmountMode.USD, amount = "100", fee = "1") }
+        vm.save()
+        advanceUntilIdle()
+        val op = store.data.value.operations.single()
+        assertEquals(98123.45, op.priceUsd, 1e-6)
+        assertEquals(2.0, op.feeUsd, 1e-9)
+        assertEquals(100 / 49061.725, op.quantity, 1e-12)
+    }
 }

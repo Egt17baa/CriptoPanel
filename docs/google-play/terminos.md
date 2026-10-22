@@ -12,7 +12,7 @@ Todo lo que muestra la app es información general con fines informativos y educ
 
 ## 3. Datos de terceros
 
-Los precios, índices, TVL, rendimientos y demás datos proceden de servicios de terceros (CoinGecko, CoinLore, DefiLlama, Binance, Alternative.me y TradingView). No garantizamos que sean exactos, completos ni que estén disponibles en todo momento. Pueden llegar con retraso o contener errores; cuando una fuente falla, la app muestra el último dato válido o «sin datos».
+Los precios, índices, TVL, rendimientos y demás datos proceden de servicios de terceros (CoinGecko, CoinLore, DefiLlama, Binance, Alternative.me, el BCE a través de Frankfurter y TradingView). No garantizamos que sean exactos, completos ni que estén disponibles en todo momento. Pueden llegar con retraso o contener errores; cuando una fuente falla, la app muestra el último dato válido o «sin datos».
 
 ## 4. Cartera, alertas y calculadoras
 

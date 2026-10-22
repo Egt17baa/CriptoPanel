@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.criptopanel.core.format.Money
 import app.criptopanel.core.format.formatPercent
 import app.criptopanel.core.format.formatQuantity
 import app.criptopanel.core.format.formatSignedUsd
@@ -72,8 +73,8 @@ fun WhatIfScreen(vm: WhatIfViewModel, search: SearchViewModel, onBack: () -> Uni
             OutlinedTextField(
                 value = amount,
                 onValueChange = vm::setAmount,
-                label = { Text(if (monthly) "Dólares cada mes" else "Dólares invertidos") },
-                suffix = { Text("$") },
+                label = { Text(if (monthly) "Importe cada mes" else "Importe invertido") },
+                suffix = { Text(Money.symbol) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 modifier = Modifier.fillMaxWidth(),

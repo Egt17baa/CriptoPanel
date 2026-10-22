@@ -41,7 +41,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.criptopanel.core.format.formatQuantity
-import app.criptopanel.core.format.formatUsd
+import app.criptopanel.core.format.Money
+import app.criptopanel.core.format.formatMoney
 import app.criptopanel.core.ui.BackScaffold
 import app.criptopanel.core.ui.GlassCard
 import app.criptopanel.core.ui.MenuColor
@@ -149,7 +150,7 @@ fun OperationScreen(vm: OperationViewModel, search: SearchViewModel, onDone: () 
                 }
             }
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                listOf(AmountMode.USD to "Importe en $", AmountMode.QUANTITY to "Cantidad de ${coin.symbol}").forEachIndexed { i, (mode, label) ->
+                listOf(AmountMode.USD to "Importe en ${Money.symbol}", AmountMode.QUANTITY to "Cantidad de ${coin.symbol}").forEachIndexed { i, (mode, label) ->
                     SegmentedButton(selected = form.mode == mode, onClick = { vm.setMode(mode) }, shape = SegmentedButtonDefaults.itemShape(i, 2)) {
                         Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
@@ -158,10 +159,10 @@ fun OperationScreen(vm: OperationViewModel, search: SearchViewModel, onDone: () 
             OutlinedTextField(
                 value = form.amount,
                 onValueChange = { v -> vm.update { it.copy(amount = v) } },
-                label = { Text(if (form.mode == AmountMode.USD) (if (buy) "Dólares que pagaste" else "Dólares que recibiste") else "Cantidad de ${coin.symbol}") },
-                suffix = { Text(if (form.mode == AmountMode.USD) "$" else coin.symbol) },
+                label = { Text(if (form.mode == AmountMode.USD) (if (buy) "Importe que pagaste" else "Importe que recibiste") else "Cantidad de ${coin.symbol}") },
+                suffix = { Text(if (form.mode == AmountMode.USD) Money.symbol else coin.symbol) },
                 supportingText = {
-                    val other = if (form.mode == AmountMode.USD) form.quantity?.let { "≈ ${formatQuantity(it)} ${coin.symbol}" } else form.total?.let { "≈ ${formatUsd(it)}" }
+                    val other = if (form.mode == AmountMode.USD) form.quantity?.let { "≈ ${formatQuantity(it)} ${coin.symbol}" } else form.total?.let { "≈ ${formatMoney(it)}" }
                     other?.let { Text(it) }
                 },
                 singleLine = true,
@@ -173,7 +174,7 @@ fun OperationScreen(vm: OperationViewModel, search: SearchViewModel, onDone: () 
             OutlinedTextField(
                 value = form.price,
                 onValueChange = vm::setPrice,
-                suffix = { Text("$") },
+                suffix = { Text(Money.symbol) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 supportingText = {
@@ -199,7 +200,7 @@ fun OperationScreen(vm: OperationViewModel, search: SearchViewModel, onDone: () 
                 value = form.fee,
                 onValueChange = { v -> vm.update { it.copy(fee = v) } },
                 label = { Text("Comisión del exchange") },
-                suffix = { Text("$") },
+                suffix = { Text(Money.symbol) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 modifier = Modifier.fillMaxWidth(),
@@ -257,14 +258,14 @@ private fun Summary(form: OperationForm, coin: FormCoin, accent: Color) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("Resumen", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(
-                "${if (buy) "Compras" else "Vendes"} ${formatQuantity(q)} ${coin.symbol} a ${formatUsd(price)} el ${form.date.format(dateFormat)}",
+                "${if (buy) "Compras" else "Vendes"} ${formatQuantity(q)} ${coin.symbol} a ${formatMoney(price)} el ${form.date.format(dateFormat)}",
                 style = MaterialTheme.typography.titleSmall,
                 color = accent,
             )
             if (buy) {
-                Text("Pagas ${formatUsd(total)}" + if (fee > 0) " + ${formatUsd(fee)} de comisión = ${formatUsd(total + fee)}" else "")
+                Text("Pagas ${formatMoney(total)}" + if (fee > 0) " + ${formatMoney(fee)} de comisión = ${formatMoney(total + fee)}" else "")
             } else {
-                Text("Recibes ${formatUsd(total)}" + if (fee > 0) " − ${formatUsd(fee)} de comisión = ${formatUsd(total - fee)}" else "")
+                Text("Recibes ${formatMoney(total)}" + if (fee > 0) " − ${formatMoney(fee)} de comisión = ${formatMoney(total - fee)}" else "")
             }
         }
     }
