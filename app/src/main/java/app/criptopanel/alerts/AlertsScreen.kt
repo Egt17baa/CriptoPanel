@@ -51,6 +51,7 @@ import app.criptopanel.alerts.android.AlertService
 import app.criptopanel.alerts.android.canNotify
 import app.criptopanel.alerts.android.statusText
 import app.criptopanel.core.format.formatUsd
+import app.criptopanel.core.ui.DisclaimerLine
 import app.criptopanel.core.ui.GlassCard
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.launch
@@ -155,6 +156,7 @@ fun AlertsSection(vm: AlertsViewModel, snackbar: SnackbarHostState, onEdit: (Str
             )
             HorizontalDivider()
         }
+        item { DisclaimerLine() }
     }
 }
 

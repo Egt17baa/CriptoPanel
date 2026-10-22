@@ -33,6 +33,11 @@ Diseño Material 3 siempre oscuro, en gris y negro, con paneles de vidrio sobre 
   - **Comisiones**: comisiones o ingresos en 24 h por protocolo, filtrables por red.
   - **Rendimientos**: los 100 mejores pools por APY o TVL, con filtros (solo stablecoins, TVL mínimo).
 
+- **Más**: Comparador (hasta 4 monedas: tabla y rendimiento en base 100), Calculadora (cripto ⇄ USD y entre criptos),
+  ¿Y si hubiera invertido? (de una vez o DCA mensual, último año), y Términos, Privacidad, Fuentes y Cómo calculamos.
+- Al abrir la app por primera vez hay que aceptar los **términos** (`docs/google-play/terminos.md`). En Cartera, Alertas,
+  Rendimientos y las herramientas se recuerda: *datos informativos, no asesoramiento financiero*.
+
 ## Fuentes de datos (públicas y gratuitas)
 
 - [CoinLore API](https://www.coinlore.com/cryptocurrency-data-api) (`api.coinlore.net`): datos de Mercado
@@ -88,7 +93,7 @@ gradle -p jvm-check test
 
 ## Estado de verificación
 
-- Versión 1.3.1: `./gradlew :app:testDebugUnitTest :app:lintRelease :app:assembleRelease` compila, 173 tests pasan
+- Versión 1.4.0: `./gradlew :app:testDebugUnitTest :app:lintRelease :app:assembleRelease` compila, 173 tests pasan
   (también en `jvm-check`) y lint no da errores.
 - Los fixtures de las fuentes nuevas son respuestas reales de CoinGecko, DefiLlama y Alternative.me (22-10-2026), recortadas.
 - Falta probarla en un móvil o emulador, sobre todo el aspecto de vidrio líquido: instala el APK y revisa cada pantalla.

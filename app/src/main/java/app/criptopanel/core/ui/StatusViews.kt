@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import app.criptopanel.core.network.AppError
+import app.criptopanel.legal.DISCLAIMER
 
 @Composable
 fun ErrorBanner(error: AppError, modifier: Modifier = Modifier) {
@@ -68,4 +69,15 @@ fun <T> StateContent(
             }
         }
     }
+}
+
+/** "Datos informativos, no asesoramiento financiero." at the foot of anything that looks like advice. */
+@Composable
+fun DisclaimerLine(modifier: Modifier = Modifier) {
+    Text(
+        DISCLAIMER,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+    )
 }

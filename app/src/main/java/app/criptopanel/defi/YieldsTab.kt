@@ -61,7 +61,7 @@ fun YieldsTab(vm: LoaderViewModel<List<Pool>>) {
             PoolSort.entries.forEach { s -> FilterChip(selected = sort == s, onClick = { sort = s }, label = { Text("Por ${s.label}") }) }
         }
         Text(
-            "APY variable; no es una recomendación de inversión.",
+            "APY variable. Datos informativos, no asesoramiento financiero.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),

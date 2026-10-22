@@ -9,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.AccountBox
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -68,6 +69,21 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.MutableStateFlow
+import app.criptopanel.tools.WhatIfViewModel
+import app.criptopanel.tools.WhatIfScreen
+import app.criptopanel.tools.MoreScreen
+import app.criptopanel.tools.CompareViewModel
+import app.criptopanel.tools.CompareScreen
+import app.criptopanel.tools.CalculatorViewModel
+import app.criptopanel.tools.CalculatorScreen
+import app.criptopanel.legal.termsAccepted
+import app.criptopanel.legal.acceptTerms
+import app.criptopanel.legal.TermsGateScreen
+import app.criptopanel.legal.LegalScreen
+import app.criptopanel.legal.LegalDoc
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 
 private data class Tab(val route: String, val label: String, val icon: ImageVector)
 
@@ -76,6 +92,7 @@ private val tabs = listOf(
     Tab("top", "Top 100", Icons.AutoMirrored.Filled.List),
     Tab("defi", "DeFi", Icons.Default.Lock),
     Tab("portfolio", "Cartera", Icons.Default.AccountBox),
+    Tab("more", "Más", Icons.Default.Menu),
 )
 
 @Composable
@@ -115,8 +132,18 @@ fun AppNavHost(pendingRoute: MutableStateFlow<String?> = MutableStateFlow(null))
         nav.navigate(if (coinId == null) "operation" else "operation?coinId=${Uri.encode(coinId)}")
     }
 
+    val alertsData by alertStore.data.collectAsStateWithLifecycle()
+    var termsOk by remember { mutableStateOf(termsAccepted(context)) }
+
     Box(Modifier.fillMaxSize()) {
         LiquidBackground()
+        if (!termsOk) {
+            TermsGateScreen(onAccept = {
+                acceptTerms(context)
+                termsOk = true
+            })
+            return@Box
+        }
         Scaffold(
             bottomBar = {
                 NavigationBar {
@@ -279,6 +306,41 @@ fun AppNavHost(pendingRoute: MutableStateFlow<String?> = MutableStateFlow(null))
                         onChain = { name -> nav.navigate("chain/${Uri.encode(name)}") },
                         onCoin = onCoin,
                     )
+                }
+                composable("more") {
+                    MoreScreen(
+                        activeAlerts = alertsData.alerts.count { it.enabled },
+                        onCompare = { nav.navigate("compare") },
+                        onCalculator = { nav.navigate("calculator") },
+                        onWhatIf = { nav.navigate("whatif") },
+                        onAlerts = { nav.navigate("portfolio?tab=2") },
+                        onLegal = { doc -> nav.navigate("legal/${doc.name}") },
+                    )
+                }
+                composable("compare") {
+                    CompareScreen(
+                        vm = viewModel { CompareViewModel(container.marketRepository) },
+                        search = viewModel(key = "compare-search") { SearchViewModel(container.marketRepository) },
+                        onBack = { nav.popBackStack() },
+                    )
+                }
+                composable("calculator") {
+                    CalculatorScreen(
+                        vm = viewModel { CalculatorViewModel(container.marketRepository) },
+                        search = viewModel(key = "calculator-search") { SearchViewModel(container.marketRepository) },
+                        onBack = { nav.popBackStack() },
+                    )
+                }
+                composable("whatif") {
+                    WhatIfScreen(
+                        vm = viewModel { WhatIfViewModel(container.marketRepository) },
+                        search = viewModel(key = "whatif-search") { SearchViewModel(container.marketRepository) },
+                        onBack = { nav.popBackStack() },
+                    )
+                }
+                composable("legal/{doc}") { entry ->
+                    val doc = LegalDoc.entries.firstOrNull { it.name == entry.arguments?.getString("doc") } ?: LegalDoc.TERMS
+                    LegalScreen(doc, onBack = { nav.popBackStack() })
                 }
                 composable("chain/{name}") { entry ->
                     val name = entry.arguments?.getString("name").orEmpty()

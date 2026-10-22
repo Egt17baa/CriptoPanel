@@ -69,6 +69,7 @@ import app.criptopanel.core.format.formatQuantity
 import app.criptopanel.core.format.formatSignedUsd
 import app.criptopanel.core.format.formatUsd
 import app.criptopanel.core.ui.AutoRefresh
+import app.criptopanel.core.ui.DisclaimerLine
 import app.criptopanel.core.ui.ErrorBanner
 import app.criptopanel.core.ui.GlassCard
 import app.criptopanel.core.ui.LineChart
@@ -243,6 +244,7 @@ private fun PortfolioContent(vm: PortfolioViewModel, onHistory: (String?) -> Uni
                     }
                 }
             }
+            item { DisclaimerLine() }
         }
     }
 }

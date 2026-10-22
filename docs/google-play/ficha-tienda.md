@@ -51,7 +51,12 @@ CriptoPanel reúne en una sola app todo lo que necesitas para seguir el mercado 
 
 Datos de fuentes públicas: CoinGecko, CoinLore, DefiLlama, Alternative.me y TradingView.
 
-CriptoPanel es una herramienta informativa: no permite comprar ni vender criptomonedas y no es asesoramiento financiero.
+🧰 HERRAMIENTAS
+• Comparador de hasta 4 monedas
+• Calculadora cripto ⇄ dólares
+• «¿Y si hubiera invertido?»: compra única o DCA mensual
+
+CriptoPanel es una herramienta informativa: no permite comprar ni vender criptomonedas y no es asesoramiento financiero. Términos: docs/google-play/terminos.md.
 
 **Seguridad de los datos (Play Console)**: la app no recoge ni comparte datos. La cartera se guarda solo en el dispositivo.
 
