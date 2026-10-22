@@ -140,4 +140,25 @@ class VaultStoreTest {
         assertEquals(VaultState.Locked, s.state.value)
         assertFalse(s.changeMaster("x".toCharArray()))
     }
+
+    @Test fun `a damaged vault file is kept aside, never overwritten`() = runTest {
+        File(tmp.root, "vault.bin").writeText("{esto no es una bóveda")
+        val s = store().apply { load() }
+        assertEquals(VaultState.NoVault, s.state.value)
+        s.create("nueva".toCharArray())
+        val kept = tmp.root.listFiles()!!.filter { it.name.startsWith("vault.bin.bad-") }
+        assertEquals(1, kept.size)
+        assertEquals("{esto no es una bóveda", kept.single().readText())
+    }
+
+    @Test fun `a 1_9_2 vault opens with the master password and is rewritten with its version`() = runTest {
+        val s = store().apply { load(); create("m".toCharArray()); upsert(entry("1", "Wallet")); lock() }
+        // Make it look like a file from before the version key was always written.
+        val f = File(tmp.root, "vault.bin")
+        f.writeText(f.readText().replace("\"version\":2,", ""))
+        val again = store().apply { load() }
+        again.unlock("m".toCharArray())
+        assertEquals(listOf("Wallet"), (again.state.value as VaultState.Unlocked).entries.map { it.title })
+        assertTrue(f.readText().contains("\"version\":2"))
+    }
 }

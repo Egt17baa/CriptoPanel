@@ -304,7 +304,12 @@ fun TextCryptoScreen(onBack: () -> Unit) {
                         },
                         style = MaterialTheme.typography.labelMedium,
                     )
-                    if (seed) SeedGrid(bip39.normalize(out)) else SelectionContainer { Text(out, fontFamily = if (encrypt) FontFamily.Monospace else FontFamily.Default) }
+                    when {
+                        seed -> SeedGrid(bip39.normalize(out))
+                        // The ciphertext can be selected; the decrypted text only leaves through "Copiar" (sensitive, cleared).
+                        encrypt -> SelectionContainer { Text(out, fontFamily = FontFamily.Monospace) }
+                        else -> Text(out)
+                    }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         FilledTonalButton(onClick = { copySensitive(context, out) }) { Text("Copiar") }
                         if (encrypt) {
@@ -551,7 +556,7 @@ fun GeneratorScreen(onBack: () -> Unit) {
         }
         GlassCard(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                SelectionContainer { Text(result ?: "Elige al menos un tipo de carácter", fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.titleMedium) }
+                Text(result ?: "Elige al menos un tipo de carácter", fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.titleMedium)
                 StrengthBar(bits)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilledTonalButton(onClick = { seed++ }) { Text("↻ Otra") }

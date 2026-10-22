@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -60,9 +59,8 @@ private fun Field(label: String, value: String, secret: Boolean = false, mono: B
     GlassCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            SelectionContainer {
-                Text(if (shown) value else "•".repeat(minOf(value.length, 16)), fontFamily = if (mono || secret) FontFamily.Monospace else FontFamily.Default)
-            }
+            // No text selection: the system "Copy" would skip the sensitive flag and the 45-second clearing.
+            Text(if (shown) value else "•".repeat(minOf(value.length, 16)), fontFamily = if (mono || secret) FontFamily.Monospace else FontFamily.Default)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilledTonalButton(onClick = { copySensitive(context, value) }) { Text("Copiar") }
                 if (secret) OutlinedButton(onClick = { shown = !shown }) { Text(if (shown) "Ocultar" else "Mostrar") }
@@ -88,7 +86,7 @@ fun VaultEntryDetailScreen(store: VaultStore, id: String, onEdit: () -> Unit, on
         }
     }
     BackScaffold("${typeIcon(entry.type)} ${entry.title}", onBack) { padding ->
-        Column(Modifier.padding(padding).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(Modifier.padding(padding).touchesVault(store).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             entry.totp?.let { t ->
                 totpCode(t, now)?.let { (code, left) ->
                     GlassCard(Modifier.fillMaxWidth()) {
@@ -131,8 +129,7 @@ fun VaultEntryDetailScreen(store: VaultStore, id: String, onEdit: () -> Unit, on
                 TextButton(onClick = {
                     confirm = false
                     scope.launch {
-                        store.delete(entry.id)
-                        onBack()
+                        if (store.delete(entry.id)) onBack()
                     }
                 }) { Text("Borrar", color = NegativeColor) }
             },
@@ -159,6 +156,8 @@ fun VaultEntryEditScreen(store: VaultStore, id: String?, initialType: EntryType,
     var seed by remember { mutableStateOf(existing?.seedWords.orEmpty()) }
     var totp by remember { mutableStateOf(existing?.totp ?: TotpSecret("")) }
     var error by remember { mutableStateOf<String?>(null) }
+    // Typing counts as use too, so a long note is not lost to the idle lock.
+    LaunchedEffect(type, title, username, password, url, notes, seed, totp) { store.touch() }
 
     fun applyOtpAuth(text: String) {
         val parsed = parseOtpAuth(text)
@@ -172,7 +171,7 @@ fun VaultEntryEditScreen(store: VaultStore, id: String?, initialType: EntryType,
     }
 
     BackScaffold(if (existing == null) "Nueva entrada" else "Editar", onDone) { padding ->
-        Column(Modifier.padding(padding).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(Modifier.padding(padding).touchesVault(store).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             if (existing == null) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
                     EntryType.entries.forEach { t -> FilterChip(selected = type == t, onClick = { type = t }, label = { Text("${typeIcon(t)} ${t.label}") }) }
@@ -208,7 +207,11 @@ fun VaultEntryEditScreen(store: VaultStore, id: String?, initialType: EntryType,
                             val options = GmsBarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_QR_CODE).build()
                             GmsBarcodeScanning.getClient(context, options).startScan()
                                 .addOnSuccessListener { b -> b.rawValue?.let(::applyOtpAuth) }
-                                .addOnFailureListener { error = "No se pudo abrir el escáner (necesita Google Play services)" }
+                                .addOnFailureListener {
+                                    VaultLock.keepOpenOnce = false // The app never left: leaving later must lock.
+                                    error = "No se pudo abrir el escáner (necesita Google Play services)"
+                                }
+                                .addOnCanceledListener { VaultLock.keepOpenOnce = false }
                         }) { Text("📷 Escanear QR") }
                         OutlinedButton(onClick = {
                             val cm = context.getSystemService(android.content.ClipboardManager::class.java)
@@ -250,8 +253,11 @@ fun VaultEntryEditScreen(store: VaultStore, id: String?, initialType: EntryType,
                         updatedAt = now,
                     )
                     scope.launch {
-                        store.upsert(e)
-                        onDone()
+                        try {
+                            if (store.upsert(e)) onDone() else error = "La bóveda se bloqueó: no se ha guardado"
+                        } catch (x: Exception) {
+                            error = "No se pudo guardar"
+                        }
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),

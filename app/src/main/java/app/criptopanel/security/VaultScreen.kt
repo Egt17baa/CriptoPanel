@@ -70,6 +70,7 @@ import app.criptopanel.core.ui.NegativeColor
 import app.criptopanel.security.android.BiometricVault
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -80,7 +81,7 @@ private tailrec fun Context.fragmentActivity(): FragmentActivity? = when (this) 
 }
 
 /** Any touch on the vault counts as use for the 5-minute idle lock. */
-private fun Modifier.touchesVault(store: VaultStore) = pointerInput(store) {
+internal fun Modifier.touchesVault(store: VaultStore) = pointerInput(store) {
     awaitPointerEventScope {
         while (true) {
             awaitPointerEvent(PointerEventPass.Initial)
@@ -211,14 +212,22 @@ fun VaultScreen(store: VaultStore, totpOnly: Boolean, onOpen: (String) -> Unit, 
             onDismiss = { dialog = null },
         ) { pw ->
             scope.launch {
-                val changed = store.changeMaster(pw)
-                pw.fill('\u0000')
-                if (changed) {
-                    BiometricVault.disable(context) // It wrapped the old data key.
-                    snackbar.showSnackbar("Contraseña maestra cambiada. Vuelve a activar la huella si la usabas.")
-                } else {
-                    snackbar.showSnackbar("La bóveda se bloqueó: no se ha cambiado nada")
+                // Not cut short by leaving the screen: the fingerprint must be dropped together with the old key.
+                val msg = withContext(NonCancellable) {
+                    try {
+                        if (store.changeMaster(pw)) {
+                            BiometricVault.disable(context) // It wrapped the old data key.
+                            "Contraseña maestra cambiada. Vuelve a activar la huella si la usabas."
+                        } else {
+                            "La bóveda se bloqueó: no se ha cambiado nada"
+                        }
+                    } catch (e: Exception) {
+                        "No se pudo cambiar la contraseña maestra"
+                    } finally {
+                        pw.fill('\u0000')
+                    }
                 }
+                snackbar.showSnackbar(msg)
             }
             dialog = null
         }
@@ -230,14 +239,18 @@ fun VaultScreen(store: VaultStore, totpOnly: Boolean, onOpen: (String) -> Unit, 
         ) { pw ->
             val text = importText ?: return@PasswordDialog
             scope.launch {
-                val msg = try {
-                    store.importReplace(text, pw)
-                    BiometricVault.disable(context)
-                    "Copia importada"
-                } catch (e: CryptoFailure) {
-                    e.message ?: "Contraseña incorrecta"
-                } finally {
-                    pw.fill('\u0000')
+                val msg = withContext(NonCancellable) {
+                    try {
+                        store.importReplace(text, pw)
+                        BiometricVault.disable(context)
+                        "Copia importada"
+                    } catch (e: CryptoFailure) {
+                        e.message ?: "Contraseña incorrecta"
+                    } catch (e: Exception) {
+                        "No se pudo importar la copia"
+                    } finally {
+                        pw.fill('\u0000')
+                    }
                 }
                 snackbar.showSnackbar(msg)
             }
@@ -284,8 +297,10 @@ private fun CreateVault(store: VaultStore) {
     var b by remember { mutableStateOf("") }
     var understood by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
+    var failed by remember { mutableStateOf(false) }
     Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Crea tu bóveda", style = MaterialTheme.typography.headlineSmall)
+        if (failed) Text("No se pudo crear la bóveda. Inténtalo de nuevo.", color = NegativeColor)
         Text(
             "Guarda contraseñas, frases semilla de tus wallets, notas y códigos 2FA, cifrados con AES-256-GCM y una clave derivada de tu " +
                 "contraseña maestra con Argon2id. Solo se guarda en este móvil (no va a la copia de Google); puedes exportar una copia cifrada.",
@@ -309,9 +324,14 @@ private fun CreateVault(store: VaultStore) {
                 busy = true
                 val pw = a.toCharArray()
                 scope.launch {
-                    store.create(pw)
-                    pw.fill('\u0000')
-                    busy = false
+                    try {
+                        store.create(pw)
+                    } catch (e: Exception) {
+                        failed = true
+                    } finally {
+                        pw.fill('\u0000')
+                        busy = false
+                    }
                 }
             },
             modifier = Modifier.fillMaxWidth(),
@@ -356,6 +376,8 @@ private fun UnlockVault(store: VaultStore) {
                         pw = ""
                     } catch (e: CryptoFailure) {
                         error = "Contraseña incorrecta"
+                    } catch (e: Exception) {
+                        error = "No se pudo abrir la bóveda"
                     } finally {
                         chars.fill('\u0000')
                         busy = false

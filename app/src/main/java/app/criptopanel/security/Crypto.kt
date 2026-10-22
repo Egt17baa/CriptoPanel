@@ -41,7 +41,9 @@ enum class Aead(val id: Byte, val label: String, val detail: String) {
 data class KdfParams(val memoryKiB: Int = 64 * 1024, val iterations: Int = 3, val parallelism: Int = 1) {
     /** Refuses absurd values from a crafted header (memory bombs). */
     fun checkSane() {
-        if (memoryKiB !in 8 * parallelism..MAX_KDF_MEMORY_KIB || iterations !in 1..10 || parallelism !in 1..4) {
+        // Never more than half of what this phone lets the app use: a crafted header must not crash it.
+        val heapKiB = Runtime.getRuntime().maxMemory() / 1024
+        if (memoryKiB !in 8 * parallelism..MAX_KDF_MEMORY_KIB || memoryKiB > heapKiB / 2 || iterations !in 1..10 || parallelism !in 1..4) {
             throw CryptoFailure("Parámetros de cifrado no válidos")
         }
     }
@@ -51,8 +53,8 @@ data class KdfParams(val memoryKiB: Int = 64 * 1024, val iterations: Int = 3, va
 class CryptoFailure(message: String = "Contraseña incorrecta o datos dañados") : Exception(message)
 
 const val KEY_BYTES = 32
-/** Highest Argon2id memory a header may ask for: 4× the default, still safe on any phone (no out-of-memory crash). */
-const val MAX_KDF_MEMORY_KIB = 256 * 1024
+/** Highest Argon2id memory a header may ask for: 2× the default (Bouncy Castle allocates it on the Java heap). */
+const val MAX_KDF_MEMORY_KIB = 128 * 1024
 const val SALT_BYTES = 16
 const val NONCE_BYTES = 12
 const val TAG_BYTES = 16

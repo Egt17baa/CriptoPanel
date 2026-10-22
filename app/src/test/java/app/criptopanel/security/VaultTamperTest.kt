@@ -88,4 +88,41 @@ class VaultTamperTest {
         assertEquals(listOf("Wallet"), VaultCrypto.read(upgraded, dek).map { it.title })
         assertEquals(listOf("Wallet"), VaultCrypto.read(upgraded, VaultCrypto.unlock(upgraded, master)).map { it.title })
     }
+
+    /** A 1.9.2 vault on disk: version 1, and its JSON has no "version" key (it was the default then). */
+    private fun v192Json(master: CharArray): String {
+        val dek = randomBytes(KEY_BYTES)
+        val salt = randomBytes(SALT_BYTES)
+        val kek = argon2id(master, salt, QUICK)
+        fun v1Seal(key: ByteArray, plain: ByteArray, aad: String): String {
+            val nonce = randomBytes(NONCE_BYTES)
+            return Base64.getEncoder().encodeToString(nonce + aead(Aead.AES_256_GCM, true, key, nonce, aad.toByteArray(), plain))
+        }
+        return """{"kdf":{"memoryKiB":${QUICK.memoryKiB},"iterations":${QUICK.iterations},"parallelism":${QUICK.parallelism}},""" +
+            """"salt":"${Base64.getEncoder().encodeToString(salt)}","wrappedKey":"${v1Seal(kek, dek, "criptopanel-vault-key-v1")}",""" +
+            """"data":"${v1Seal(dek, appJson.encodeToString(listOf(note)).toByteArray(), "criptopanel-vault-data-v1")}","masterCheckedAt":5}"""
+    }
+
+    @Test fun `vault files without a version key, as 1_9_2 and 1_9_3 wrote them, still open`() {
+        val master = "maestra".toCharArray()
+        // 1.9.2: version 1 without the key.
+        val old = VaultCrypto.decodeFile(v192Json(master))
+        assertEquals(VaultFile.VERSION_UNKNOWN, old.version)
+        val oldKey = VaultCrypto.unlock(old, master)
+        assertEquals(listOf("Wallet"), VaultCrypto.read(old, oldKey).map { it.title })
+        assertEquals(1, VaultCrypto.resolve(old, oldKey).version)
+        val upgraded = VaultCrypto.afterMasterUnlock(old, oldKey, master, now = 10, kdf = QUICK)
+        assertTrue(VaultCrypto.encodeFile(upgraded).contains("\"version\":2"))
+        // 1.9.3: version 2 without the key.
+        val (v2, dek) = vault()
+        val stripped = VaultCrypto.decodeFile(VaultCrypto.encodeFile(v2).replace("\"version\":2,", ""))
+        assertEquals(VaultFile.VERSION_UNKNOWN, stripped.version)
+        assertTrue(VaultCrypto.unlock(stripped, "maestra".toCharArray()).contentEquals(dek))
+        assertEquals(VaultFile.VERSION, VaultCrypto.resolve(stripped, dek).version)
+        assertEquals(1, VaultCrypto.read(stripped, dek).size)
+    }
+
+    @Test fun `new files always say their version`() {
+        assertTrue(VaultCrypto.encodeFile(vault().first).contains("\"version\":2"))
+    }
 }

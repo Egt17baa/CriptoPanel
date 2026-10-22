@@ -105,7 +105,7 @@ Revisión de todo el código (cifrado, bóveda, red, WebView, intents, importaci
 | Media | El borrado del portapapeles a los 45 s se cancelaba al salir de la pantalla: la frase copiada se quedaba en el portapapeles. | Temporizador en un ámbito del proceso, no de la pantalla. |
 | Baja | La frase semilla de la bóveda y el texto libre usaban el teclado normal, que aprende y sugiere palabras. | Teclado de contraseña, sin autocorrector. |
 | Baja | Un archivo descifrado podía quedarse en la caché si la app moría antes de guardarlo. | La ruta sobrevive a la recreación y los restos se borran al arrancar. |
-| Baja | Una cabecera manipulada podía pedir 1 GiB a Argon2id (cierre por falta de memoria). | Máximo 256 MiB. |
+| Baja | Una cabecera manipulada podía pedir 1 GiB a Argon2id (cierre por falta de memoria). | Máximo 128 MiB y nunca más de la mitad de la memoria de la app (1.9.4). |
 | Baja | Clave AES-256 propia usada tal cual en todos los mensajes. | HKDF con sal aleatoria por mensaje (KDF 3). |
 | Baja | CSV: celdas que empiezan por `= + - @` se ejecutaban como fórmulas en Excel; un archivo enorme cerraba la app. | Se anteponen con `'` (y se quitan al importar); límite de 5 MB. |
 | Baja | El WebView de TradingView podía abrir enlaces de cualquier esquema (deep links de otras apps). | Solo `http`/`https`. |
@@ -146,6 +146,19 @@ Contra quien tenga **root** y pueda escribir en los archivos de la app:
 - Las bóvedas y copias de versión 1 se abren y pasan a versión 2 en el siguiente desbloqueo con la contraseña maestra (la misma clave de datos, así la huella sigue valiendo).
 
 Lo que ninguna app puede impedir con root: volver a poner el archivo completo de una fecha anterior (no hay almacenamiento de confianza para un contador), leer la memoria mientras la bóveda está abierta o capturar lo que se escribe.
+
+## Tercera revisión (1.9.4)
+
+| Gravedad | Problema | Arreglo |
+|---|---|---|
+| Alta | 1.9.3 leía un archivo sin el campo `version` (así guardaban 1.9.2 y 1.9.3, porque no se escriben los valores por defecto) como versión 2: las bóvedas y copias de 1.9.2 daban «Contraseña incorrecta». | Sin `version` se prueban los datos asociados de la versión 2 y luego los de la 1 (no permite bajar de versión: un bloque de la versión 1 solo existe en un archivo de la versión 1); los archivos nuevos siempre escriben `version`. Prueba con JSON reales de 1.9.2 y 1.9.3. |
+| Media | Salir de la pantalla justo después de guardar dejaba el disco y la memoria distintos: tras cambiar la maestra, el siguiente guardado podía volver a escribir la bóveda con la clave y la contraseña antiguas. | Guardar y abrir son un único paso no cancelable; cambiar la maestra e importar desactivan la huella en ese mismo paso. |
+| Media | En GitHub Actions, la clave de firma estaba disponible para todos los pasos, incluida una acción de terceros con etiqueta movible y permiso de escritura. | Acciones fijadas por SHA, secretos solo en el paso de Gradle, permisos de solo lectura y publicación en un trabajo aparte sin secretos. |
+| Baja | Si el escáner de QR fallaba, la bóveda no se bloqueaba al salir de la app. | Se restablece al fallar o cancelar. |
+| Baja | Al escribir una nota larga, el bloqueo por inactividad la descartaba; un guardado con la bóveda ya bloqueada cerraba la pantalla como si hubiera guardado. | Escribir y tocar cuentan como uso; se avisa si no se guardó. |
+| Baja | Mantener pulsado → Copiar en secretos (bóveda, texto descifrado, generador) saltaba el portapapeles sensible y el borrado a los 45 s. | Sin selección de texto en secretos. |
+| Baja | Errores de disco al guardar, crear o importar cerraban la app. | Se muestran como error. |
+| Baja | Un `vault.bin` dañado o ilegible se trataba como «sin bóveda» y crear una nueva lo sobrescribía. | Se aparta como `vault.bin.bad-<fecha>` y nunca se sobrescribe. |
 
 ## Avisos
 

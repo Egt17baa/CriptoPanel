@@ -2,6 +2,7 @@ package app.criptopanel.security
 
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -49,8 +50,23 @@ class VaultStore(
 
     suspend fun load() = mutex.withLock {
         if (_state.value != VaultState.Loading) return@withLock
-        vault = withContext(io) { if (file.exists()) runCatching { VaultCrypto.decodeFile(file.readText()) }.getOrNull() else null }
+        vault = withContext(io) {
+            if (!file.exists()) return@withContext null
+            try {
+                VaultCrypto.decodeFile(file.readText())
+            } catch (e: CryptoFailure) {
+                keepAside() // Damaged: kept for recovery, never overwritten by a new vault.
+                null
+            } catch (e: java.io.IOException) {
+                null // Unreadable right now: [create] still moves it aside before writing anything.
+            }
+        }
         _state.value = if (vault == null) VaultState.NoVault else VaultState.Locked
+    }
+
+    /** Renames an existing vault file to vault.bin.bad-<time> instead of losing it. */
+    private fun keepAside() {
+        if (file.exists()) file.renameTo(File(file.path + ".bad-" + now()))
     }
 
     private suspend fun save(v: VaultFile) = withContext(io) {
@@ -64,6 +80,20 @@ class VaultStore(
      * Shows [v] unlocked with [key], which the store now owns; if a [lock] happened since [since], it stays locked
      * and [key] is wiped instead. The entries are read before the key is kept, so a wrong key is never held.
      */
+    /**
+     * Writes [next] and makes it the vault in memory, as one step that leaving the screen cannot cut in half
+     * (otherwise disk and memory could disagree, and the next save would write the old file and key back).
+     */
+    private suspend fun commit(next: VaultFile, key: ByteArray, since: Int) = withContext(NonCancellable) {
+        try {
+            save(next)
+        } catch (e: Exception) {
+            key.fill(0)
+            throw e
+        }
+        opened(next, key, since)
+    }
+
     private fun opened(v: VaultFile, key: ByteArray, since: Int) {
         vault = v
         if (epoch != since) {
@@ -86,9 +116,9 @@ class VaultStore(
     suspend fun create(master: CharArray) = mutex.withLock {
         val since = epoch
         val (v, key) = withContext(compute) { VaultCrypto.create(master, now(), kdf) }
-        save(v)
+        withContext(io) { keepAside() } // Only reached with no readable vault: whatever file is there is kept.
         _state.value = VaultState.Locked
-        opened(v, key, since)
+        commit(v, key, since)
     }
 
     /** Throws [CryptoFailure] for a wrong password. */
@@ -102,8 +132,7 @@ class VaultStore(
             key.fill(0)
             throw e
         }
-        save(checked)
-        opened(checked, key, since)
+        commit(checked, key, since)
     }
 
     val biometricAllowed: Boolean get() = vault?.let { VaultCrypto.biometricAllowed(it, now()) } ?: false
@@ -111,11 +140,18 @@ class VaultStore(
     /** With a data key released by the biometric prompt. Throws [MasterRequired] when the 7-day recheck is due. */
     suspend fun unlockWithKey(key: ByteArray) = mutex.withLock {
         val v = vault ?: return@withLock
-        if (!biometricAllowed) {
+        // The real version first: a version-1 file (date not authenticated) needs the master password once.
+        val known = try {
+            VaultCrypto.resolve(v, key)
+        } catch (e: CryptoFailure) {
+            key.fill(0)
+            throw e
+        }
+        if (!VaultCrypto.biometricAllowed(known, now())) {
             key.fill(0)
             throw MasterRequired()
         }
-        opened(v, key, epoch)
+        opened(known, key, epoch)
     }
 
     /** A copy of the open data key, to wrap it with the biometric key; null while locked. */
@@ -141,19 +177,23 @@ class VaultStore(
         return false
     }
 
-    /** Saves the change even if the vault locks meanwhile (with a copy of the key), then reopens only if it did not. */
-    private suspend fun modify(change: (List<VaultEntry>) -> List<VaultEntry>) = mutex.withLock {
-        val v = vault ?: return@withLock
+    /**
+     * Saves the change even if the vault locks meanwhile (with a copy of the key), then reopens only if it did not.
+     * False if the vault was already locked, so nothing was saved.
+     */
+    private suspend fun modify(change: (List<VaultEntry>) -> List<VaultEntry>): Boolean = mutex.withLock {
+        val v = vault ?: return@withLock false
         val since = epoch
-        val key = dek?.copyOf() ?: return@withLock
-        val current = (_state.value as? VaultState.Unlocked)?.entries ?: return@withLock key.fill(0)
+        val key = dek?.copyOf() ?: return@withLock false
+        val current = (_state.value as? VaultState.Unlocked)?.entries ?: return@withLock false.also { key.fill(0) }
         val next = try {
-            withContext(compute) { VaultCrypto.write(v, key, change(current)) }.also { save(it) }
+            withContext(compute) { VaultCrypto.write(v, key, change(current)) }
         } catch (e: Exception) {
             key.fill(0)
             throw e
         }
-        opened(next, key, since)
+        commit(next, key, since)
+        true
     }
 
     suspend fun upsert(entry: VaultEntry) = modify { list ->
@@ -172,8 +212,7 @@ class VaultStore(
         } finally {
             key.fill(0)
         }
-        save(next)
-        opened(next, newKey, since)
+        commit(next, newKey, since)
         true
     }
 
@@ -192,8 +231,7 @@ class VaultStore(
             key.fill(0)
             throw e
         }
-        save(checked)
-        opened(checked, key, since)
+        commit(checked, key, since)
     }
 
     /** Deletes the vault for good (forgotten master password). */
