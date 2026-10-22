@@ -155,4 +155,14 @@ class SeedCryptoTest {
             // expected
         }
     }
+
+    @Test fun `the ciphertext is found inside an imported text file`() {
+        val key = parseRawKey(newRawKeyHex())!!
+        val token = encryptText("legal winner", Secret.RawKey(key))
+        val wrapped = "Mi copia de la wallet\n" + token.chunked(40).joinToString("\n") + "\n\nNota: la clave está en la caja fuerte.\n"
+        assertEquals(token, extractCp1(wrapped))
+        assertEquals("legal winner", decryptText(extractCp1(token + "\n")!!, Secret.RawKey(key)))
+        assertNull(extractCp1("sin nada cifrado"))
+        assertNull(extractCp1("CP1:"))
+    }
 }

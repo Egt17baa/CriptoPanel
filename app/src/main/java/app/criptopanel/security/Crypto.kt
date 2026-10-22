@@ -254,6 +254,19 @@ internal data class Header(
 
 const val TEXT_PREFIX = "CP1:"
 
+/** Largest .txt imported into the text decrypter (a ciphertext is a few KB). */
+const val MAX_TEXT_FILE_BYTES = 1024 * 1024
+
+/** The "CP1:" ciphertext inside a text file, which may also hold other lines; null if there is none. */
+fun extractCp1(text: String): String? {
+    val start = text.indexOf(TEXT_PREFIX).takeIf { it >= 0 } ?: return null
+    // Chat apps and editors may wrap it over several lines: keep each following piece that is still Base64url.
+    val body = text.substring(start + TEXT_PREFIX.length).trim().split(Regex("\\s+"))
+        .takeWhile { it.matches(Regex("[A-Za-z0-9_-]+")) }
+        .joinToString("")
+    return if (body.isEmpty()) null else TEXT_PREFIX + body
+}
+
 internal fun newHeader(kind: Byte, alg: Aead, secret: Secret, kdf: KdfParams, random: SecureRandom): Header {
     val raw = secret is Secret.RawKey
     return Header(

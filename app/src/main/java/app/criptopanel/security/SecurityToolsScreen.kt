@@ -34,6 +34,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import app.criptopanel.portfolio.readAtMost
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -181,11 +182,48 @@ fun TextCryptoScreen(onBack: () -> Unit) {
         output = null
         error = null
     }
+    var fileMessage by remember { mutableStateOf<Pair<Boolean, String>?>(null) }
+    val saveTxt = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { dest ->
+        val text = output ?: return@rememberLauncherForActivityResult
+        if (dest == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            fileMessage = try {
+                withContext(Dispatchers.IO) {
+                    context.contentResolver.openOutputStream(dest, "wt")!!.use { it.write((text + "\n").toByteArray(Charsets.UTF_8)) }
+                }
+                true to "Guardado. El archivo solo contiene el texto cifrado: sin tu ${if (useKey) "clave" else "contraseña"} no sirve de nada."
+            } catch (e: Exception) {
+                false to "No se pudo guardar el archivo."
+            }
+        }
+    }
+    val openTxt = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            val text = try {
+                withContext(Dispatchers.IO) {
+                    context.contentResolver.openInputStream(uri)!!.use { it.readAtMost(MAX_TEXT_FILE_BYTES + 1) }
+                        .takeIf { it.size <= MAX_TEXT_FILE_BYTES }?.toString(Charsets.UTF_8)
+                }
+            } catch (e: Exception) {
+                null
+            }
+            val token = text?.let(::extractCp1)
+            if (token != null) {
+                input = token
+                reset()
+                fileMessage = true to "Texto cifrado importado de ${displayName(context, uri)}."
+            } else {
+                fileMessage = false to if (text == null) "No se pudo leer el archivo." else "Ese archivo no contiene un texto cifrado ($TEXT_PREFIX…)."
+            }
+        }
+    }
 
     ToolColumn("Cifrar texto", onBack) {
         ModePicker(encrypt) {
             encrypt = it
             input = ""
+            fileMessage = null
             reset()
         }
         if (encrypt) {
@@ -210,6 +248,9 @@ fun TextCryptoScreen(onBack: () -> Unit) {
                 minLines = 4,
                 modifier = Modifier.fillMaxWidth(),
             )
+            OutlinedButton(onClick = { fileMessage = null; openTxt.launch(arrayOf("text/plain", "application/octet-stream", "*/*")) }, modifier = Modifier.fillMaxWidth()) {
+                Text("📂 Importar archivo .txt")
+            }
             val detected = inspectText(input)
             if (detected != null) {
                 val (a, raw) = detected
@@ -250,6 +291,7 @@ fun TextCryptoScreen(onBack: () -> Unit) {
         ) { Text(if (encrypt) "Cifrar" else "Descifrar") }
         if (busy) Busy(if (useKey) "Procesando…" else "Derivando la clave con Argon2id…")
         error?.let { Text(it, color = NegativeColor) }
+        fileMessage?.let { (ok, text) -> Text(text, color = if (ok) PositiveColor else NegativeColor) }
         output?.let { out ->
             val seed = !encrypt && bip39.check(out).let { it.validCount && it.unknown.isEmpty() }
             GlassCard(Modifier.fillMaxWidth()) {
@@ -270,6 +312,12 @@ fun TextCryptoScreen(onBack: () -> Unit) {
                                 context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, out), "Compartir"))
                             }) { Text("Compartir") }
                         }
+                    }
+                    if (encrypt) {
+                        OutlinedButton(
+                            onClick = { fileMessage = null; saveTxt.launch(if (seedMode) "frase-cifrada.txt" else "texto-cifrado.txt") },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text("💾 Guardar como archivo .txt") }
                     }
                     if (encrypt) {
                         Text(
