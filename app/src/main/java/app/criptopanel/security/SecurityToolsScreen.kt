@@ -210,9 +210,17 @@ fun TextCryptoScreen(onBack: () -> Unit) {
                 minLines = 4,
                 modifier = Modifier.fillMaxWidth(),
             )
-            inspectText(input)?.let { (a, raw) ->
+            val detected = inspectText(input)
+            if (detected != null) {
+                val (a, raw) = detected
                 LaunchedEffect(a, raw) { useKey = raw }
-                Text("Cifrado con ${a.label} y ${if (raw) "una clave AES-256" else "una contraseña"}.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("✓ Cifrado con ${a.label} y ${if (raw) "una clave AES-256" else "una contraseña"}.", color = PositiveColor)
+            } else {
+                Text(
+                    "No hace falta elegir el algoritmo: se detecta solo (${Aead.entries.joinToString(", ") { it.label }}).",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
         SecretInput(useKey, { useKey = it; reset() }, password, { password = it; reset() }, keyHex, { keyHex = it; reset() }, allowGenerate = encrypt)
