@@ -10,6 +10,9 @@ import java.util.concurrent.TimeUnit
 const val COINGECKO_BASE_URL = "https://api.coingecko.com/api/v3/"
 const val DEFILLAMA_BASE_URL = "https://api.llama.fi/"
 const val COINLORE_BASE_URL = "https://api.coinlore.net/api/"
+const val ALTERNATIVE_BASE_URL = "https://api.alternative.me/"
+const val STABLECOINS_BASE_URL = "https://stablecoins.llama.fi/"
+const val YIELDS_BASE_URL = "https://yields.llama.fi/"
 
 private const val MAX_RETRIES = 2
 private const val MAX_RETRY_DELAY_MS = 3_000L

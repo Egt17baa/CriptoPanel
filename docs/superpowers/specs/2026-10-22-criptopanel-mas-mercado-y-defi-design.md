@@ -1,6 +1,6 @@
 # CriptoPanel: más mercado y más DeFi (diseño)
 
-Fecha: 22 de octubre de 2026. Estado: pendiente de revisión.
+Fecha: 22 de octubre de 2026. Estado: aprobado por el usuario (con el aspecto visual añadido).
 
 ## Contexto
 
@@ -70,6 +70,18 @@ Arriba aparece una `ScrollableTabRow`: **TVL · Stablecoins · DEX · Comisiones
 - **Comisiones:** igual que DEX, más un interruptor *Comisiones / Ingresos* (`dataType=dailyFees` o `dailyRevenue`).
 - **Rendimientos:** los 100 mejores pools tras aplicar filtros. Cada fila tiene proyecto, símbolo, red, APY (base + recompensas), TVL y si tiene riesgo de pérdida impermanente. Los filtros son «Solo stablecoins» (sí/no), TVL mínimo (1 M$ por defecto, 10 M$ o 100 M$) y orden por APY o por TVL. Siempre se excluyen los pools con `outlier == true`, los que no tienen APY y los que tienen un APY superior al 1.000 %. Al tocar un pool se abre `https://defillama.com/yields/pool/{pool}`. Debajo de los filtros aparece el texto «APY variable; no es una recomendación de inversión».
 
+## Aspecto visual: Material 3 con vidrio líquido en gris y negro
+
+Lo pidió el usuario al aprobar el diseño: «material design con efecto transparente, vidrio líquido, un poco gris negro». Se aplica a toda la app, también a las pantallas que ya existen.
+
+- **Base Material 3.** Se mantienen los componentes de Material 3. El color dinámico de Android 12+ se desactiva para que la app conserve siempre su paleta.
+- **Paleta gris y negra, siempre oscura.** Fondo `#0B0B0D` y superficies en grises neutros (`#16171A`, `#1F2024`, `#2A2B30`). Texto `#ECECEE` y secundario `#B4B5BB`, con un único acento plata o blanco frío (`#D7DAE0`) en lugar de color. Verde (`#4ADE80`) y rojo claro (`#FCA5A5`) solo para subidas y bajadas. La app ignora el modo claro del sistema: el tema es oscuro siempre.
+- **Fondo líquido.** Detrás de todo el contenido hay un lienzo con 3 manchas grandes en grises (de `#26272C` a `#33343A`) que se mueven despacio (un ciclo de unos 20 s). Están muy difuminadas con `Modifier.blur(80.dp)` en Android 12+; en versiones anteriores, que no tienen `blur`, se dibujan con degradados radiales que ya son suaves. Es un dibujo en `Canvas`, no un vídeo, para no gastar batería ni ocupar espacio. El movimiento se detiene si el sistema tiene las animaciones desactivadas (`ANIMATOR_DURATION_SCALE == 0`).
+- **Paneles de vidrio.** Las tarjetas, la barra inferior, la barra superior y las pestañas de DeFi usan una superficie translúcida: blanco al 6–8 % sobre el fondo, borde de 1 dp en blanco al 12 %, un brillo en degradado vertical en el tercio superior (blanco del 10 % al 0 %) y esquinas de 24 dp en las tarjetas. Se crea un componente `GlassCard` / `Modifier.glass()` en `core/ui` y lo usan todas las pantallas. No se difumina lo que hay detrás de cada panel (eso necesitaría una librería externa), pero como el fondo ya está difuminado, el resultado se ve como vidrio esmerilado.
+- **Legibilidad.** El texto sobre vidrio debe alcanzar un contraste de 4,5:1 contra el color más claro que pueda quedar detrás: mancha `#33343A` + panel al 8 % ≈ `#43444A`, frente al que el texto principal da 8,2:1, el secundario `#B4B5BB` 4,7:1, el verde 5,6:1 y el rojo 5,1:1. Por eso las manchas nunca pasan de `#33343A` y los paneles nunca superan el 8 % de blanco.
+- **Gráficos.** Las líneas pasan a plata (`#D7DAE0`) con relleno en degradado hacia transparente, y se usa verde o rojo si el periodo sube o baja. El widget de TradingView usa `theme: dark` con fondo transparente.
+- **Icono de la app:** no cambia en este subproyecto.
+
 ## Arquitectura
 
 Se sigue el patrón actual: API Retrofit → repositorio con `TtlCache` → ViewModel con `StateFlow<UiState<T>>` → pantalla Compose. Las dependencias se crean en `AppContainer`.
@@ -93,9 +105,7 @@ navigation/AppNavHost: rutas movers, trending, categories, exchanges
 
 ### Respuestas grandes
 
-Los endpoints de rendimientos (10,7 MB), comisiones (5 MB) y DEX (2,3 MB) no pasan por el convertidor de Retrofit, que convierte todo el cuerpo en un `String`. Se declaran como `@Streaming suspend fun …(): ResponseBody` y se leen con `appJson.decodeFromStream` sobre DTOs que solo tienen los campos usados (`ignoreUnknownKeys` ya está activo). El resultado se reduce enseguida (top 100 filtrado, top 100 protocolos) antes de guardarlo en caché. Así la memoria queda acotada y la caché solo guarda lo que se enseña. OkHttp descomprime gzip de forma transparente.
-
-Para que el `readTimeout` de 30 s no corte la descarga de rendimientos en redes lentas, ese cliente usa un `callTimeout` de 60 s.
+Los endpoints de rendimientos (10,7 MB), comisiones (5 MB) y DEX (2,3 MB) siguen el mismo patrón que `/protocols` (9 MB), que la app ya descarga sin problemas: convertidor normal de Retrofit y DTOs con solo los campos usados (`ignoreUnknownKeys` ya está activo). Antes de guardar en caché, el resultado se reduce a lo que se enseña: todos los pools que pasan los filtros base (para poder cambiar de filtro sin descargar otra vez) y los 100 primeros protocolos. Su caché dura 30 minutos, como la de `/protocols`. OkHttp descomprime gzip de forma transparente; el `readTimeout` de 30 s se mide entre paquetes, no sobre la descarga entera, así que no corta descargas largas.
 
 ### Errores
 
@@ -110,7 +120,7 @@ Se sigue el estilo actual: JUnit 4 + coroutines-test + fixtures JSON reales reco
 - Exchanges: conversión de BTC a USD, y respaldo en ₿ si no hay precio de BTC.
 - Stablecoins: suma solo `peggedUSD`; desviación de paridad > 1 %; `gecko_id` nulo no rompe.
 - DEX y comisiones: nombre de red con espacios bien codificado (`overview/dexs/OP%20Mainnet`); cambios nulos se muestran como `—`.
-- Rendimientos: filtros (stablecoin, TVL mínimo, outlier, APY nulo y APY > 1.000 %), orden y límite de 100. El parseo por *streaming* se prueba con un fixture de varios pools servido por MockWebServer.
+- Rendimientos: filtros (stablecoin, TVL mínimo, outlier, APY nulo y APY > 1.000 %), orden y límite de 100.
 - ViewModels: la pestaña DeFi no pide nada hasta abrirse, y un fallo conserva los datos anteriores.
 - Antes de dar por terminado: `./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug` en verde y el APK de la release `apk-latest` regenerado por el workflow.
 

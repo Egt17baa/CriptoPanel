@@ -33,4 +33,10 @@ class FakeCoinGeckoApi : CoinGeckoApi {
         kotlinx.coroutines.delay(searchDelayMs)
         return serve { decodeFixture("cg_search.json") }
     }
+
+    override suspend fun trending(): TrendingDto = serve { decodeFixture("cg_trending.json") }
+
+    override suspend fun categories(): List<CategoryDto> = serve { decodeFixture("cg_categories.json") }
+
+    override suspend fun exchanges(perPage: Int): List<ExchangeDto> = serve { decodeFixture("cg_exchanges.json") }
 }

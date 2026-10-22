@@ -1,0 +1,52 @@
+{
+ "coins": [
+  {
+   "item": {
+    "id": "universal-high-income-2",
+    "name": "Universal High Income",
+    "symbol": "UHI",
+    "market_cap_rank": 860,
+    "thumb": "https://coin-images.coingecko.com/coins/images/102179637/standard/logo.jpg?1792416691",
+    "small": "https://coin-images.coingecko.com/coins/images/102179637/small/logo.jpg?1792416691",
+    "data": {
+     "price": 0.019759173378410308,
+     "price_change_percentage_24h": {
+      "usd": 2.7699254341145476
+     }
+    }
+   }
+  },
+  {
+   "item": {
+    "id": "onlyagent",
+    "name": "OnlyAgent",
+    "symbol": "OA",
+    "market_cap_rank": 941,
+    "thumb": "https://coin-images.coingecko.com/coins/images/102179691/standard/logo.png?1792642934",
+    "small": "https://coin-images.coingecko.com/coins/images/102179691/small/logo.png?1792642934",
+    "data": {
+     "price": 0.01654896382180261,
+     "price_change_percentage_24h": {
+      "usd": 0
+     }
+    }
+   }
+  },
+  {
+   "item": {
+    "id": "aerodrome-finance",
+    "name": "Aerodrome Finance",
+    "symbol": "AERO",
+    "market_cap_rank": null,
+    "thumb": "https://coin-images.coingecko.com/coins/images/31745/standard/token.png?1696530564",
+    "small": "https://coin-images.coingecko.com/coins/images/31745/small/token.png?1696530564",
+    "data": {
+     "price": 0.7998585509373645,
+     "price_change_percentage_24h": {}
+    }
+   }
+  }
+ ],
+ "nfts": [],
+ "categories": []
+}

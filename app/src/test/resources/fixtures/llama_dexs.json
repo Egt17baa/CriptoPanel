@@ -1,0 +1,86 @@
+{
+ "totalDataChart": [],
+ "totalDataChartBreakdown": [],
+ "allChains": [
+  "Solana",
+  "Ethereum",
+  "BSC",
+  "Base",
+  "Robinhood Chain",
+  "Polygon",
+  "Hyperliquid L1",
+  "Arbitrum",
+  "Near",
+  "Avalanche",
+  "Tron",
+  "edgeX L1",
+  "X Layer",
+  "Spark",
+  "Monad",
+  "THORChain",
+  "Chainflip",
+  "OP Mainnet"
+ ],
+ "total24h": 8938692824.28,
+ "change_1d": -0.34,
+ "change_7d": -3.61,
+ "change_1m": -36.08,
+ "protocols": [
+  {
+   "name": "Uniswap V3",
+   "displayName": "Uniswap V3",
+   "slug": "uniswap-v3",
+   "logo": "https://icons.llamao.fi/icons/protocols/uniswap-v3",
+   "category": "Dexs",
+   "chains": [
+    "Ethereum",
+    "Arbitrum",
+    "OP Mainnet"
+   ],
+   "total24h": 1138615349,
+   "change_1d": -0.15,
+   "defillamaId": "2198"
+  },
+  {
+   "name": "Uniswap V4",
+   "displayName": "Uniswap V4",
+   "slug": "uniswap-v4",
+   "logo": "https://icons.llamao.fi/icons/protocols/uniswap-v4",
+   "category": "Dexs",
+   "chains": [
+    "Ethereum",
+    "OP Mainnet",
+    "Base"
+   ],
+   "total24h": 1084848742,
+   "change_1d": 7.8,
+   "defillamaId": "5690"
+  },
+  {
+   "name": "Kalshi",
+   "displayName": "Kalshi",
+   "slug": "kalshi",
+   "logo": "https://icons.llamao.fi/icons/protocols/kalshi",
+   "category": "Prediction Market",
+   "chains": [
+    "Off Chain"
+   ],
+   "total24h": 512931430,
+   "change_1d": 11.77,
+   "defillamaId": "6689"
+  },
+  {
+   "name": "Sleepy",
+   "displayName": "Sleepy",
+   "slug": "sleepy",
+   "logo": null,
+   "category": "Dexs",
+   "chains": [
+    "Base"
+   ],
+   "total24h": null,
+   "change_1d": null,
+   "defillamaId": "1"
+  }
+ ]
+}

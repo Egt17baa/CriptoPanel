@@ -1,0 +1,83 @@
+{
+ "totalDataChart": [],
+ "totalDataChartBreakdown": [],
+ "allChains": [
+  "Solana",
+  "Ethereum",
+  "Hyperliquid L1",
+  "Robinhood Chain",
+  "BSC",
+  "Base",
+  "Polygon",
+  "TON",
+  "Tron",
+  "Avalanche",
+  "Arbitrum",
+  "Ink",
+  "Stellar",
+  "zkLighter",
+  "Monad",
+  "OP Mainnet",
+  "Chainflip",
+  "TxFlow"
+ ],
+ "total24h": 67820670.01000004,
+ "change_1d": -4.56,
+ "change_7d": -11.95,
+ "change_1m": -25.22,
+ "protocols": [
+  {
+   "name": "Tether",
+   "displayName": "Tether",
+   "slug": "tether",
+   "logo": "https://icons.llamao.fi/icons/protocols/tether",
+   "category": "Stablecoin Issuer",
+   "chains": [
+    "Off Chain"
+   ],
+   "total24h": 17471013,
+   "change_1d": -0.62,
+   "defillamaId": "5009"
+  },
+  {
+   "name": "Circle USDC",
+   "displayName": "Circle USDC",
+   "slug": "circle-usdc",
+   "logo": "https://icons.llamao.fi/icons/protocols/circle-usdc",
+   "category": "Stablecoin Issuer",
+   "chains": [
+    "Ethereum",
+    "Off Chain"
+   ],
+   "total24h": 6943612,
+   "change_1d": -0.5,
+   "defillamaId": "5008"
+  },
+  {
+   "name": "PumpSwap",
+   "displayName": "PumpSwap",
+   "slug": "pumpswap",
+   "logo": "https://icons.llamao.fi/icons/protocols/pumpswap",
+   "category": "Dexs",
+   "chains": [
+    "Solana"
+   ],
+   "total24h": 3462354,
+   "change_1d": 5.14,
+   "defillamaId": "5936"
+  },
+  {
+   "name": "Sleepy",
+   "displayName": "Sleepy",
+   "slug": "sleepy",
+   "logo": null,
+   "category": "Dexs",
+   "chains": [
+    "Base"
+   ],
+   "total24h": null,
+   "change_1d": null,
+   "defillamaId": "1"
+  }
+ ]
+}

@@ -1,0 +1,103 @@
+{
+ "status": "success",
+ "data": [
+  {
+   "chain": "Ethereum",
+   "project": "lido",
+   "symbol": "STETH",
+   "tvlUsd": 23000000000.0,
+   "apyBase": 2.2,
+   "apyReward": null,
+   "apy": 2.2,
+   "pool": "lido-steth",
+   "stablecoin": false,
+   "ilRisk": "no",
+   "exposure": "single",
+   "outlier": false
+  },
+  {
+   "chain": "Arbitrum",
+   "project": "aave-v3",
+   "symbol": "USDC",
+   "tvlUsd": 400000000.0,
+   "apyBase": 4.1,
+   "apyReward": 0.9,
+   "apy": 5.0,
+   "pool": "aave-usdc",
+   "stablecoin": true,
+   "ilRisk": "no",
+   "exposure": "single",
+   "outlier": false
+  },
+  {
+   "chain": "Base",
+   "project": "aerodrome",
+   "symbol": "USDC-WETH",
+   "tvlUsd": 25000000.0,
+   "apyBase": 30.0,
+   "apyReward": 12.0,
+   "apy": 42.0,
+   "pool": "aero-lp",
+   "stablecoin": false,
+   "ilRisk": "yes",
+   "exposure": "multi",
+   "outlier": false
+  },
+  {
+   "chain": "Ethereum",
+   "project": "tiny",
+   "symbol": "DAI",
+   "tvlUsd": 500000.0,
+   "apyBase": null,
+   "apyReward": null,
+   "apy": 9.0,
+   "pool": "tiny-dai",
+   "stablecoin": true,
+   "ilRisk": "no",
+   "exposure": "single",
+   "outlier": false
+  },
+  {
+   "chain": "Ethereum",
+   "project": "crazy",
+   "symbol": "MEME",
+   "tvlUsd": 3000000.0,
+   "apyBase": null,
+   "apyReward": null,
+   "apy": 5000.0,
+   "pool": "crazy-meme",
+   "stablecoin": false,
+   "ilRisk": "no",
+   "exposure": "single",
+   "outlier": false
+  },
+  {
+   "chain": "Ethereum",
+   "project": "flagged",
+   "symbol": "USDT",
+   "tvlUsd": 9000000.0,
+   "apyBase": null,
+   "apyReward": null,
+   "apy": 60.0,
+   "pool": "flagged-usdt",
+   "stablecoin": true,
+   "ilRisk": "no",
+   "exposure": "single",
+   "outlier": true
+  },
+  {
+   "chain": "Ethereum",
+   "project": "nullapy",
+   "symbol": "ETH",
+   "tvlUsd": 9000000.0,
+   "apyBase": null,
+   "apyReward": null,
+   "apy": null,
+   "pool": "null-apy",
+   "stablecoin": false,
+   "ilRisk": "no",
+   "exposure": "single",
+   "outlier": false
+  }
+ ]
+}

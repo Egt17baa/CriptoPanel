@@ -1,0 +1,50 @@
+[
+ {
+  "id": "smart-contract-platform",
+  "name": "Smart Contract Platform",
+  "market_cap": 2381852123369.5605,
+  "market_cap_change_24h": -1.474158213275523,
+  "volume_24h": 67164284322.61643,
+  "top_3_coins": [
+   "https://coin-images.coingecko.com/coins/images/1/small/bitcoin.png",
+   "https://coin-images.coingecko.com/coins/images/279/small/ethereum.png",
+   "https://coin-images.coingecko.com/coins/images/825/small/bnb-icon2_2x.png"
+  ],
+  "updated_at": "2026-10-22T10:23:51.000Z"
+ },
+ {
+  "id": "layer-1",
+  "name": "Layer 1 (L1)",
+  "market_cap": 2347365268224.901,
+  "market_cap_change_24h": -1.4513206424686258,
+  "volume_24h": 64389625760.16889,
+  "top_3_coins": [
+   "https://coin-images.coingecko.com/coins/images/1/small/bitcoin.png",
+   "https://coin-images.coingecko.com/coins/images/279/small/ethereum.png",
+   "https://coin-images.coingecko.com/coins/images/825/small/bnb-icon2_2x.png"
+  ],
+  "updated_at": "2026-10-22T10:23:51.000Z"
+ },
+ {
+  "id": "proof-of-work-pow",
+  "name": "Proof of Work (PoW)",
+  "market_cap": 1710516614386.402,
+  "market_cap_change_24h": -1.4085265205046877,
+  "volume_24h": 40356754323.73613,
+  "top_3_coins": [
+   "https://coin-images.coingecko.com/coins/images/1/small/bitcoin.png",
+   "https://coin-images.coingecko.com/coins/images/486/small/Brandmark-Yellow_(1).png",
+   "https://coin-images.coingecko.com/coins/images/5/small/dogecoin.png"
+  ],
+  "updated_at": "2026-10-22T10:23:51.000Z"
+ },
+ {
+  "id": "empty",
+  "name": "Empty sector",
+  "market_cap": null,
+  "market_cap_change_24h": null,
+  "volume_24h": null,
+  "top_3_coins": [],
+  "updated_at": null
+ }
+]

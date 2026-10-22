@@ -1,0 +1,94 @@
+{
+ "peggedAssets": [
+  {
+   "id": "1",
+   "name": "Tether",
+   "symbol": "USDT",
+   "gecko_id": "tether",
+   "pegType": "peggedUSD",
+   "pegMechanism": "fiat-backed",
+   "circulating": {
+    "peggedUSD": 182651203948.6313
+   },
+   "circulatingPrevDay": {
+    "peggedUSD": 182761961623.84845
+   },
+   "circulatingPrevWeek": {
+    "peggedUSD": 183864962799.83966
+   },
+   "chains": [
+    "Tron",
+    "Ethereum",
+    "BSC",
+    "Solana",
+    "Arbitrum"
+   ],
+   "price": 0.9991829229712813
+  },
+  {
+   "id": "2",
+   "name": "USD Coin",
+   "symbol": "USDC",
+   "gecko_id": "usd-coin",
+   "pegType": "peggedUSD",
+   "pegMechanism": "fiat-backed",
+   "circulating": {
+    "peggedUSD": 72542494258.20026
+   },
+   "circulatingPrevDay": {
+    "peggedUSD": 72228795472.94746
+   },
+   "circulatingPrevWeek": {
+    "peggedUSD": 72768930634.13113
+   },
+   "chains": [
+    "Ethereum",
+    "Solana",
+    "Hyperliquid L1",
+    "Base"
+   ],
+   "price": 0.9996765755842023
+  },
+  {
+   "id": "49",
+   "name": "Euro Tether",
+   "symbol": "EURT",
+   "gecko_id": "tether-eurt",
+   "pegType": "peggedEUR",
+   "pegMechanism": "fiat-backed",
+   "circulating": {
+    "peggedEUR": 4666493.736330189
+   },
+   "circulatingPrevDay": {
+    "peggedEUR": 4666493.736330189
+   },
+   "circulatingPrevWeek": {
+    "peggedEUR": 4666493.736330189
+   },
+   "chains": [
+    "Ethereum",
+    "Polygon"
+   ],
+   "price": null
+  },
+  {
+   "id": "999",
+   "name": "Broken Dollar",
+   "symbol": "BRKN",
+   "gecko_id": null,
+   "pegType": "peggedUSD",
+   "pegMechanism": "algorithmic",
+   "circulating": {
+    "peggedUSD": 1000000
+   },
+   "circulatingPrevDay": {},
+   "circulatingPrevWeek": {
+    "peggedUSD": 2000000
+   },
+   "chains": [
+    "Ethereum"
+   ],
+   "price": 0.95
+  }
+ ]
+}

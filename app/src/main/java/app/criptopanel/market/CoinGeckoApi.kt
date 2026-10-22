@@ -33,4 +33,13 @@ interface CoinGeckoApi {
 
     @GET("search")
     suspend fun search(@Query("query") q: String): SearchDto
+
+    @GET("search/trending")
+    suspend fun trending(): TrendingDto
+
+    @GET("coins/categories")
+    suspend fun categories(): List<CategoryDto>
+
+    @GET("exchanges")
+    suspend fun exchanges(@Query("per_page") perPage: Int = 50): List<ExchangeDto>
 }

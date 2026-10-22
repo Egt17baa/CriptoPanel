@@ -1,0 +1,23 @@
+[
+ {
+  "date": "1792454400",
+  "totalCirculatingUSD": {
+   "peggedUSD": 303738026162,
+   "peggedEUR": 814366310
+  }
+ },
+ {
+  "date": "1792540800",
+  "totalCirculatingUSD": {
+   "peggedUSD": 303538522713,
+   "peggedEUR": 828933115
+  }
+ },
+ {
+  "date": "1792627200",
+  "totalCirculatingUSD": {
+   "peggedUSD": 303755085327.71,
+   "peggedEUR": 821843468.29
+  }
+ }
+]
