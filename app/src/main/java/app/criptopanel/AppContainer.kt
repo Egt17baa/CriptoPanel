@@ -35,6 +35,7 @@ import app.criptopanel.security.HIBP_BASE_URL
 import app.criptopanel.security.PwnedPasswordsApi
 import app.criptopanel.security.VaultStore
 import app.criptopanel.portfolio.PortfolioStore
+import app.criptopanel.portfolio.binance.BinanceImportService
 import java.io.File
 import java.time.LocalDate
 
@@ -83,8 +84,13 @@ class AppContainer(demoKey: String, filesDir: File, notifier: AlertNotifier) {
         return (fx.eurPerUsdOn(from, to) as? Outcome.Ok)?.value
     }
 
+    private val binanceHistory = retrofit(BINANCE_REST_URL, client).create(BinanceHistoryApi::class.java)
+
     /** Prices on past days for the operation form. */
-    val historicalPrices = HistoricalPrices(coinGecko, retrofit(BINANCE_REST_URL, client).create(BinanceHistoryApi::class.java))
+    val historicalPrices = HistoricalPrices(coinGecko, binanceHistory)
+
+    /** Cartera → Importar desde Binance; a new one per import, so its caches start fresh. */
+    fun binanceImport() = BinanceImportService(coinGecko, binanceHistory, fx, historicalPrices)
 
     val alertStore = AlertStore(File(filesDir, ALERTS_FILE))
 

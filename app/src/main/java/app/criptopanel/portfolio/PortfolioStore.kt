@@ -75,6 +75,21 @@ class PortfolioStore(
         }
     }
 
+    /**
+     * Adds imported operations, skipping ids already present (importing the same file twice adds nothing).
+     * Returns how many were added, or null if a sell would go below zero (then nothing changes).
+     */
+    suspend fun addImported(ops: List<Operation>): Int? = mutex.withLock {
+        ensureLoaded()
+        val current = _data.value
+        val ids = current.operations.map { it.id }.toSet()
+        val fresh = ops.filter { it.id !in ids }.distinctBy { it.id }
+        val next = current.copy(operations = current.operations + fresh)
+        if (firstShortfall(next.operations) != null) return@withLock null
+        if (fresh.isNotEmpty()) write(next)
+        fresh.size
+    }
+
     /** Deleting a buy can uncover a later sell; then nothing changes and the message is returned. */
     suspend fun delete(id: String): String? = commit { d -> d.copy(operations = d.operations.filterNot { it.id == id }) }
 

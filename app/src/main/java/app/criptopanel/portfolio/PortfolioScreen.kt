@@ -82,6 +82,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
+import app.criptopanel.portfolio.binance.planBinanceImport
+import app.criptopanel.portfolio.binance.BinanceImportState
+import app.criptopanel.portfolio.binance.BinanceImportService
+import app.criptopanel.portfolio.binance.BinanceImportDialog
+import app.criptopanel.portfolio.binance.BINANCE_FILE_TYPES
 
 private val portfolioRanges = listOf(ChartRange.W1, ChartRange.M1, ChartRange.Y1)
 
@@ -90,6 +95,7 @@ private val portfolioRanges = listOf(ChartRange.W1, ChartRange.M1, ChartRange.Y1
 fun PortfolioScreen(
     vm: PortfolioViewModel,
     store: PortfolioStore,
+    binanceImport: () -> BinanceImportService,
     onCoin: (String) -> Unit,
     onAddOperation: () -> Unit,
     onHistory: (coinId: String?) -> Unit,
@@ -112,6 +118,35 @@ fun PortfolioScreen(
     val importer = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) scope.launch { snackbar.showSnackbar(importFrom(context, uri, store)) }
     }
+    var binance by remember { mutableStateOf<BinanceImportState?>(null) }
+    val binancePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) {
+            binance = null
+            return@rememberLauncherForActivityResult
+        }
+        binance = BinanceImportState.Working
+        scope.launch { binance = planBinanceImport(context, uri, store, binanceImport()) }
+    }
+    binance?.let { state ->
+        BinanceImportDialog(
+            state = state,
+            onPickFile = { binancePicker.launch(BINANCE_FILE_TYPES) },
+            onConfirm = { plan ->
+                binance = null
+                scope.launch {
+                    val added = store.addImported(plan.operations)
+                    snackbar.showSnackbar(
+                        when (added) {
+                            null -> "No se ha importado: alguna venta dejaría una moneda en negativo"
+                            0 -> "Nada nuevo: esas operaciones ya estaban en tu cartera"
+                            else -> "$added operaciones importadas de Binance"
+                        },
+                    )
+                }
+            },
+            onDismiss = { binance = null },
+        )
+    }
 
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
@@ -129,6 +164,10 @@ fun PortfolioScreen(
                         DropdownMenuItem(text = { Text("Importar CSV") }, onClick = {
                             menu = false
                             importer.launch(arrayOf("text/*", "application/csv", "application/vnd.ms-excel", "application/octet-stream"))
+                        })
+                        DropdownMenuItem(text = { Text("Importar desde Binance") }, onClick = {
+                            menu = false
+                            binance = BinanceImportState.Help
                         })
                     }
                 },

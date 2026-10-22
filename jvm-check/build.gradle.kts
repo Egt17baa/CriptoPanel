@@ -23,6 +23,7 @@ val androidOnly = listOf(
     "**/core/ui/Theme.kt",
     "**/core/ui/Glass.kt",
     "**/core/ui/Scaffolds.kt",
+    "**/portfolio/binance/BinanceImportDialog.kt",
 )
 
 sourceSets {

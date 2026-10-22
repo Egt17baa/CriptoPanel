@@ -37,6 +37,10 @@ Diseño Material 3 siempre oscuro, en gris y negro, con paneles de vidrio sobre 
   ¿Y si hubiera invertido? (de una vez o DCA mensual, último año), y Términos, Privacidad, Fuentes y Cómo calculamos.
 - **Aprende** (en Más): 10 lecciones sin conexión (orígenes, blockchain, criptografía, wallets calientes y frías, Ethereum,
   stablecoins, DeFi, seguridad, cómo leer CriptoPanel) con resumen y mini-test, y un glosario de 42 términos.
+- **Importar desde Binance** (Cartera → menú): el «Historial de operaciones» de spot o el «Historial de transacciones»
+  (CSV o Excel, cabeceras en inglés o español). Pares contra stablecoins, euros o cripto, comisiones, Convert, compras
+  con tarjeta y recompensas; precio en dólares de cada día (Binance, CoinGecko, BCE), sin duplicados al reimportar.
+  Diseño en `docs/superpowers/specs/2026-10-22-criptopanel-importar-binance-design.md`.
 - **Euros** (Más → Preferencias → Divisa): todo se ve en euros con el cambio del BCE (Frankfurter). La cartera usa
   el cambio del día de cada operación; los formularios se escriben en euros y se guardan en dólares.
 - **Seguridad** (en Más): cifrar texto (`CP1:…`) y archivos (`.cpenc`, por bloques de 64 KiB) con AES-256-GCM,

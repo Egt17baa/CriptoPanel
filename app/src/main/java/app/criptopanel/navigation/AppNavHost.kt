@@ -279,6 +279,7 @@ fun AppNavHost(pendingRoute: MutableStateFlow<String?> = MutableStateFlow(null))
                             PortfolioViewModel(store, container.marketRepository, container::displayRates, { Money.current.perUsd })
                         },
                         store = store,
+                        binanceImport = container::binanceImport,
                         onCoin = onCoin,
                         onAddOperation = { onAddOperation(null) },
                         onHistory = { coinId -> nav.navigate(if (coinId == null) "history" else "history?coinId=${Uri.encode(coinId)}") },
