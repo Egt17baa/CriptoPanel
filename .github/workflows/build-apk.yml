@@ -2,7 +2,7 @@ name: Build APK
 
 on:
   push:
-    branches: [ccr-026d9d36-56wdts, ccr-0b385ebb-8z4419]
+    branches: [ccr-026d9d36-56wdts, ccr-0b385ebb-8z4419, claude/superpower-671dj6]
     tags: ["v*"]
   workflow_dispatch:
 
