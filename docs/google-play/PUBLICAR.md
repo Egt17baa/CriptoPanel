@@ -79,6 +79,16 @@ Textos listos para copiar en [`ficha-tienda.md`](ficha-tienda.md). Imágenes en 
 - **Público objetivo**: recomendado **18+** (contenido sobre criptomonedas).
 - **Clasificación de contenido**: rellena el cuestionario (categoría *Referencia / noticias / educación*).
 - **Anuncios**: la app no contiene anuncios.
+- **Servicio en primer plano** (*Contenido de la app → Servicios en primer plano*): declara el tipo
+  `specialUse` con el texto de [`ficha-tienda.md`](ficha-tienda.md) y un vídeo corto (se puede grabar con el móvil)
+  donde se cree una alerta, salga la notificación fija «Vigilando N alertas» y llegue el aviso.
+- **Cifrado / exportación** (*Contenido de la app* o al subir la versión): responde que **sí usa cifrado**, solo
+  con algoritmos estándar (AES, ChaCha20, Twofish, Serpent, Camellia) para proteger datos del propio usuario.
+  Encaja en la exención de mercado masivo; no hace falta ningún documento.
+- **Permisos**: notificaciones (alertas), arranque del móvil (reactivar las alertas) e Internet. La huella usa
+  la API biométrica del sistema; la app nunca ve la huella.
+- **Gratis para siempre**: una app publicada como gratuita **no puede pasar a ser de pago** después
+  (sí se podrían añadir compras dentro de la app, aunque no es el plan).
 
 ## 6. Subir
 

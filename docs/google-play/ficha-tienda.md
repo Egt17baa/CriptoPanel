@@ -49,16 +49,28 @@ CriptoPanel reúne en una sola app todo lo que necesitas para seguir el mercado 
 ✨ DISEÑO
 • Material Design en gris y negro con paneles de vidrio sobre un fondo líquido en movimiento
 
-Datos de fuentes públicas: CoinGecko, CoinLore, DefiLlama, Alternative.me y TradingView.
-
 🧰 HERRAMIENTAS
 • Comparador de hasta 4 monedas
-• Calculadora cripto ⇄ dólares
+• Calculadora cripto ⇄ dólares o euros
 • «¿Y si hubiera invertido?»: compra única o DCA mensual
+• Toda la app en dólares o en euros (cambio oficial del BCE)
+
+📚 APRENDE
+• 10 lecciones sin conexión: orígenes, blockchain, criptografía, wallets calientes y frías, DeFi, estafas…
+• Mini-test en cada lección y glosario con buscador
+
+🔐 SEGURIDAD
+• Cifra las 12 o 24 palabras de tu wallet con AES-256, ChaCha20, Twofish, Serpent, Camellia o en cascada
+• Con contraseña (Argon2id) o con una clave AES-256 que guardas tú; comprobación BIP-39 de la frase
+• Cifrado de archivos, generador de contraseñas y comprobador de filtraciones
+• Bóveda de contraseñas con huella y autenticador 2FA
+• Sin capturas de pantalla y portapapeles que se borra solo
+
+Datos de fuentes públicas: CoinGecko, CoinLore, DefiLlama, Binance, Alternative.me, BCE (Frankfurter) y TradingView.
 
 CriptoPanel es una herramienta informativa: no permite comprar ni vender criptomonedas y no es asesoramiento financiero. Términos: docs/google-play/terminos.md.
 
-**Seguridad de los datos (Play Console)**: la app no recoge ni comparte datos. La cartera se guarda solo en el dispositivo.
+**Seguridad de los datos (Play Console)**: la app no recoge ni comparte datos personales. Cartera, alertas y bóveda se guardan solo en el dispositivo. El comprobador de filtraciones envía 5 caracteres del hash SHA-1 de la contraseña a Have I Been Pwned (k-anonimato); no identifica al usuario ni la contraseña.
 
 **Servicio en primer plano (Play Console → Declaración)**: tipo `specialUse`. Justificación: el usuario crea alertas de precio y espera el aviso en el momento; la app no tiene servidor de notificaciones push, así que mantiene una conexión de datos de mercado mientras haya alertas activas, con notificación visible y botón de pausa.
 
