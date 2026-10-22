@@ -1,6 +1,6 @@
 # Términos y condiciones de CriptoPanel
 
-*Versión del 22 de octubre de 2026. Es el mismo texto que la app muestra y pide aceptar al abrirla.*
+*Versión del 22 de octubre de 2026 (revisión 2). Es el mismo texto que la app muestra y pide aceptar al abrirla.*
 
 ## 1. Qué es CriptoPanel
 
@@ -17,6 +17,10 @@ Los precios, índices, TVL, rendimientos y demás datos proceden de servicios de
 ## 4. Cartera, alertas y calculadoras
 
 La cartera, los favoritos y las alertas son herramientas personales: tú introduces los datos y eres responsable de ellos. Los cálculos de ganancias son aproximados y no sirven como documento fiscal. Las alertas dependen de la conexión, de la batería y de que el sistema permita a la app seguir en segundo plano; pueden llegar tarde o no llegar.
+
+## 4 bis. Herramientas de seguridad
+
+Las herramientas de Seguridad (cifrado de texto y archivos, generador y comprobadores) usan algoritmos estándar (AES-256-GCM, ChaCha20-Poly1305, Argon2id) de librerías reconocidas, pero no han pasado una auditoría independiente. Si olvidas una contraseña de cifrado, nadie puede recuperar los datos. Para proteger fondos importantes usa una wallet hardware.
 
 ## 5. Sin custodia ni operaciones
 

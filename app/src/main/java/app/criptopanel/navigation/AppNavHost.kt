@@ -96,6 +96,12 @@ import app.criptopanel.core.saveCurrency
 import app.criptopanel.core.network.Outcome
 import app.criptopanel.core.format.Money
 import android.app.Activity
+import app.criptopanel.security.TextCryptoScreen
+import app.criptopanel.security.SecurityScreen
+import app.criptopanel.security.GeneratorScreen
+import app.criptopanel.security.FileHashScreen
+import app.criptopanel.security.FileCryptoScreen
+import app.criptopanel.security.BreachScreen
 
 private data class Tab(val route: String, val label: String, val icon: ImageVector)
 
@@ -334,6 +340,7 @@ fun AppNavHost(pendingRoute: MutableStateFlow<String?> = MutableStateFlow(null))
                         activeAlerts = alertsData.alerts.count { it.enabled },
                         lessonsRead = readLessons(context).count { id -> LESSONS.any { it.id == id } },
                         onLearn = { nav.navigate("learn") },
+                        onSecurity = { nav.navigate("security") },
                         onCompare = { nav.navigate("compare") },
                         onCalculator = { nav.navigate("calculator") },
                         onWhatIf = { nav.navigate("whatif") },
@@ -359,6 +366,12 @@ fun AppNavHost(pendingRoute: MutableStateFlow<String?> = MutableStateFlow(null))
                         },
                     )
                 }
+                composable("security") { SecurityScreen(onTool = { nav.navigate(it) }, onBack = { nav.popBackStack() }) }
+                composable("security/text") { TextCryptoScreen(onBack = { nav.popBackStack() }) }
+                composable("security/file") { FileCryptoScreen(onBack = { nav.popBackStack() }) }
+                composable("security/generator") { GeneratorScreen(onBack = { nav.popBackStack() }) }
+                composable("security/breach") { BreachScreen(container.pwnedPasswords, onBack = { nav.popBackStack() }) }
+                composable("security/hash") { FileHashScreen(onBack = { nav.popBackStack() }) }
                 composable("learn") {
                     LearnScreen(
                         onLesson = { id -> nav.navigate("lesson/$id") },

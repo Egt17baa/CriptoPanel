@@ -1,7 +1,7 @@
 package app.criptopanel.legal
 
 /** Bump when the terms change: everyone is asked to accept them again. */
-const val TERMS_VERSION = "2026-10-22"
+const val TERMS_VERSION = "2026-10-22 (rev. 2)"
 
 const val DISCLAIMER = "Datos informativos, no asesoramiento financiero."
 
@@ -48,6 +48,12 @@ val TERMS = listOf(
             "batería y de que el sistema permita a la app seguir en segundo plano; pueden llegar tarde o no llegar.",
     ),
     LegalSection(
+        "4 bis. Herramientas de seguridad",
+        "Las herramientas de Seguridad (cifrado de texto y archivos, generador y comprobadores) usan algoritmos estándar " +
+            "(AES-256-GCM, ChaCha20-Poly1305, Argon2id) de librerías reconocidas, pero no han pasado una auditoría independiente. " +
+            "Si olvidas una contraseña de cifrado, nadie puede recuperar los datos. Para proteger fondos importantes usa una wallet hardware.",
+    ),
+    LegalSection(
         "5. Sin custodia ni operaciones",
         "CriptoPanel no guarda fondos, no se conecta a tus wallets ni a tus cuentas de exchange y no ejecuta compras ni ventas.",
     ),
@@ -91,6 +97,12 @@ val PRIVACY = listOf(
             "El widget de TradingView puede usar cookies propias.",
     ),
     LegalSection(
+        "Seguridad",
+        "Lo que escribes o eliges en las herramientas de Seguridad (textos, archivos, contraseñas) se procesa solo en tu móvil y no se " +
+            "guarda. El comprobador de filtraciones envía a Have I Been Pwned únicamente los 5 primeros caracteres de la huella SHA-1 de la " +
+            "contraseña, que no permiten conocerla. En las pantallas de Seguridad se bloquean las capturas de pantalla.",
+    ),
+    LegalSection(
         "Permisos",
         "Internet y estado de la red (descargar datos), notificaciones (avisarte de tus alertas), servicio en primer plano e inicio al " +
             "arrancar (vigilar tus alertas en directo, solo mientras tengas alguna activa).",
@@ -106,6 +118,8 @@ val SOURCES = listOf(
     Source("Binance (datos de mercado)", "Precios en directo para las alertas y precios antiguos de la cartera.", "https://developers.binance.com/docs/binance-spot-api-docs"),
     Source("Alternative.me", "Índice de miedo y codicia.", "https://alternative.me/crypto/fear-and-greed-index/"),
     Source("BCE vía Frankfurter", "Tipo de cambio euro/dólar, de hoy y de días pasados, para ver la app en euros.", "https://frankfurter.dev"),
+    Source("Have I Been Pwned", "Comprobar si una contraseña aparece en filtraciones (solo se envían 5 caracteres de su huella).", "https://haveibeenpwned.com/Passwords"),
+    Source("EFF", "Lista de 7.776 palabras para generar frases de contraseña (CC BY 3.0).", "https://www.eff.org/dice"),
     Source("TradingView", "Gráficos de velas de TOTAL, TOTAL2, TOTAL3 y dominancias.", "https://www.tradingview.com/widget-docs/"),
 )
 

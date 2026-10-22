@@ -31,7 +31,9 @@ class GeneratorAndChecksTest {
     }
 
     @Test fun `bundled word list is the EFF large list`() {
-        val words = File("src/main/assets/eff_large_wordlist.txt").readLines().filter { it.isNotBlank() }
+        // Run from app/ (Gradle Android tests) or from jvm-check/.
+        val file = listOf("src/main/assets", "../app/src/main/assets").map { File(it, "eff_large_wordlist.txt") }.first { it.exists() }
+        val words = file.readLines().filter { it.isNotBlank() }
         assertEquals(7776, words.size)
         assertEquals(7776, words.toSet().size)
         val phrase = generatePassphrase(words, PassphraseOptions(words = 5, separator = " ", addNumber = true))

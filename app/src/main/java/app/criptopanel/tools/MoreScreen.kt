@@ -36,6 +36,7 @@ fun MoreScreen(
     activeAlerts: Int,
     lessonsRead: Int,
     onLearn: () -> Unit,
+    onSecurity: () -> Unit,
     onCompare: () -> Unit,
     onCalculator: () -> Unit,
     onWhatIf: () -> Unit,
@@ -80,6 +81,12 @@ fun MoreScreen(
                 Section(
                     "Aprende",
                     listOf(Entry("📚", "Aprende", "Orígenes, criptografía, wallets… · $lessonsRead de ${LESSONS.size} leídas", onLearn)),
+                )
+            }
+            item {
+                Section(
+                    "Seguridad",
+                    listOf(Entry("🔐", "Seguridad", "Cifrado AES-256 de texto y archivos, generador, filtraciones…", onSecurity)),
                 )
             }
             item { Section("Herramientas", tools) }
