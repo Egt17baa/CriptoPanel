@@ -1,0 +1,111 @@
+package app.criptopanel.security
+
+import java.io.EOFException
+import java.io.InputStream
+import java.io.OutputStream
+import java.io.PushbackInputStream
+import java.nio.ByteBuffer
+import java.security.SecureRandom
+
+const val STREAM_PREFIX_BYTES = 7
+const val CHUNK_BYTES = 64 * 1024
+const val ENCRYPTED_EXTENSION = ".cpenc"
+private const val MAX_NAME_BYTES = 1024
+
+/** STREAM nonce: prefix (7) ‖ counter (4, big-endian) ‖ last-record flag (1). */
+private fun streamNonce(prefix: ByteArray, counter: Int, last: Boolean): ByteArray =
+    ByteBuffer.allocate(NONCE_BYTES).put(prefix).putInt(counter).put(if (last) 1 else 0).array()
+
+private fun InputStream.readFully(buf: ByteArray, len: Int = buf.size): Int {
+    var n = 0
+    while (n < len) {
+        val r = read(buf, n, len - n)
+        if (r < 0) break
+        n += r
+    }
+    return n
+}
+
+/**
+ * Encrypts [input] to [output] in 64 KiB records (STREAM construction, as in age or Tink):
+ * header, then the original file [name] as record 0, then the data; the last record is flagged, so truncation,
+ * reordering and any changed bit are all detected. Memory use stays constant whatever the file size.
+ */
+fun encryptStream(
+    input: InputStream,
+    output: OutputStream,
+    name: String,
+    password: CharArray,
+    alg: Aead = Aead.AES_256_GCM,
+    kdf: KdfParams = KdfParams(),
+    random: SecureRandom = secureRandom,
+) {
+    val header = Header(Header.KIND_FILE, alg, kdf, randomBytes(SALT_BYTES, random), randomBytes(STREAM_PREFIX_BYTES, random))
+    val aad = header.bytes()
+    val key = argon2id(password, header.salt, kdf)
+    try {
+        output.write(aad)
+        val nameBytes = safeFileName(name).toByteArray(Charsets.UTF_8).let { if (it.size > MAX_NAME_BYTES) it.copyOf(MAX_NAME_BYTES) else it }
+        val sealedName = aead(alg, true, key, streamNonce(header.nonce, 0, false), aad, nameBytes)
+        output.write(ByteBuffer.allocate(2).putShort(sealedName.size.toShort()).array())
+        output.write(sealedName)
+        var counter = 1
+        var current = ByteArray(CHUNK_BYTES)
+        var currentLen = input.readFully(current)
+        while (true) {
+            val next = ByteArray(CHUNK_BYTES)
+            val nextLen = if (currentLen == CHUNK_BYTES) input.readFully(next) else 0
+            val last = nextLen == 0
+            output.write(aead(alg, true, key, streamNonce(header.nonce, counter, last), aad, current.copyOf(currentLen)))
+            if (last) break
+            counter++
+            current = next
+            currentLen = nextLen
+        }
+        output.flush()
+    } finally {
+        key.fill(0)
+    }
+}
+
+/** Decrypts what [encryptStream] wrote; returns the original file name. Throws [CryptoFailure] on any problem. */
+fun decryptStream(input: InputStream, output: OutputStream, password: CharArray): String {
+    val pin = PushbackInputStream(input, 1)
+    val fixed = ByteArray(Header.SIZE_BEFORE_NONCE + STREAM_PREFIX_BYTES)
+    if (pin.readFully(fixed) != fixed.size) throw CryptoFailure("No es un archivo cifrado por CriptoPanel")
+    val header = Header.parse(ByteBuffer.wrap(fixed), Header.KIND_FILE)
+    val aad = fixed
+    val key = argon2id(password, header.salt, header.kdf)
+    try {
+        val lenBytes = ByteArray(2)
+        if (pin.readFully(lenBytes) != 2) throw CryptoFailure()
+        val nameLen = ByteBuffer.wrap(lenBytes).short.toInt() and 0xFFFF
+        if (nameLen < TAG_BYTES || nameLen > MAX_NAME_BYTES + TAG_BYTES) throw CryptoFailure()
+        val sealedName = ByteArray(nameLen)
+        if (pin.readFully(sealedName) != nameLen) throw CryptoFailure()
+        val name = aead(header.alg, false, key, streamNonce(header.nonce, 0, false), aad, sealedName).toString(Charsets.UTF_8)
+        var counter = 1
+        val record = ByteArray(CHUNK_BYTES + TAG_BYTES)
+        while (true) {
+            val n = pin.readFully(record)
+            if (n < TAG_BYTES) throw CryptoFailure() // Missing final record: truncated.
+            val peek = pin.read()
+            val last = peek < 0
+            if (!last) pin.unread(peek)
+            if (!last && n != record.size) throw CryptoFailure()
+            output.write(aead(header.alg, false, key, streamNonce(header.nonce, counter, last), aad, record.copyOf(n)))
+            if (last) break
+            counter++
+        }
+        output.flush()
+        return name
+    } catch (e: EOFException) {
+        throw CryptoFailure()
+    } finally {
+        key.fill(0)
+    }
+}
+
+/** Name to save a decrypted file under: the stored one, never a path. */
+fun safeFileName(name: String): String =
+    name.substringAfterLast('/').substringAfterLast('\\').replace(Regex("[\\x00-\\x1F]"), "").trim().ifEmpty { "archivo" }.take(120)
