@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import app.criptopanel.BuildConfig
 import app.criptopanel.core.ui.GlassCard
 import app.criptopanel.legal.DISCLAIMER
+import app.criptopanel.learn.LESSONS
 import app.criptopanel.legal.LegalDoc
 import androidx.compose.foundation.clickable
 
@@ -32,6 +33,8 @@ private data class Entry(val icon: String, val title: String, val subtitle: Stri
 @Composable
 fun MoreScreen(
     activeAlerts: Int,
+    lessonsRead: Int,
+    onLearn: () -> Unit,
     onCompare: () -> Unit,
     onCalculator: () -> Unit,
     onWhatIf: () -> Unit,
@@ -67,6 +70,12 @@ fun MoreScreen(
                     "Herramientas, información y transparencia",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 4.dp),
+                )
+            }
+            item {
+                Section(
+                    "Aprende",
+                    listOf(Entry("📚", "Aprende", "Orígenes, criptografía, wallets… · $lessonsRead de ${LESSONS.size} leídas", onLearn)),
                 )
             }
             item { Section("Herramientas", tools) }

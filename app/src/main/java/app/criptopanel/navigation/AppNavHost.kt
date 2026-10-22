@@ -84,6 +84,12 @@ import app.criptopanel.legal.LegalDoc
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
+import app.criptopanel.learn.readLessons
+import app.criptopanel.learn.lessonById
+import app.criptopanel.learn.LessonScreen
+import app.criptopanel.learn.LearnScreen
+import app.criptopanel.learn.LESSONS
+import app.criptopanel.learn.GlossaryScreen
 
 private data class Tab(val route: String, val label: String, val icon: ImageVector)
 
@@ -310,6 +316,8 @@ fun AppNavHost(pendingRoute: MutableStateFlow<String?> = MutableStateFlow(null))
                 composable("more") {
                     MoreScreen(
                         activeAlerts = alertsData.alerts.count { it.enabled },
+                        lessonsRead = readLessons(context).count { id -> LESSONS.any { it.id == id } },
+                        onLearn = { nav.navigate("learn") },
                         onCompare = { nav.navigate("compare") },
                         onCalculator = { nav.navigate("calculator") },
                         onWhatIf = { nav.navigate("whatif") },
@@ -317,6 +325,22 @@ fun AppNavHost(pendingRoute: MutableStateFlow<String?> = MutableStateFlow(null))
                         onLegal = { doc -> nav.navigate("legal/${doc.name}") },
                     )
                 }
+                composable("learn") {
+                    LearnScreen(
+                        onLesson = { id -> nav.navigate("lesson/$id") },
+                        onGlossary = { nav.navigate("glossary") },
+                        onBack = { nav.popBackStack() },
+                    )
+                }
+                composable("lesson/{id}") { entry ->
+                    val lesson = lessonById(entry.arguments?.getString("id").orEmpty()) ?: LESSONS.first()
+                    LessonScreen(
+                        lesson,
+                        onNext = { next -> nav.navigate("lesson/$next") { popUpTo("learn") } },
+                        onBack = { nav.popBackStack() },
+                    )
+                }
+                composable("glossary") { GlossaryScreen(onBack = { nav.popBackStack() }) }
                 composable("compare") {
                     CompareScreen(
                         vm = viewModel { CompareViewModel(container.marketRepository) },
