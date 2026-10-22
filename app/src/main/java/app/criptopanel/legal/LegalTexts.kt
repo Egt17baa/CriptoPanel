@@ -100,7 +100,9 @@ val PRIVACY = listOf(
         "Seguridad",
         "Lo que escribes o eliges en las herramientas de Seguridad (textos, archivos, contraseñas) se procesa solo en tu móvil y no se " +
             "guarda. El comprobador de filtraciones envía a Have I Been Pwned únicamente los 5 primeros caracteres de la huella SHA-1 de la " +
-            "contraseña, que no permiten conocerla. En las pantallas de Seguridad se bloquean las capturas de pantalla.",
+            "contraseña, que no permiten conocerla. En las pantallas de Seguridad se bloquean las capturas de pantalla. " +
+            "La bóveda se guarda cifrada solo en este móvil y no entra en la copia de seguridad de Google; la huella la gestiona " +
+            "Android y la app nunca accede a ella. El escáner de QR de Google Play services analiza la imagen en el propio móvil.",
     ),
     LegalSection(
         "Permisos",

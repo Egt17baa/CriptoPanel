@@ -33,6 +33,7 @@ import app.criptopanel.market.SentimentApi
 import app.criptopanel.portfolio.HistoricalPrices
 import app.criptopanel.security.HIBP_BASE_URL
 import app.criptopanel.security.PwnedPasswordsApi
+import app.criptopanel.security.VaultStore
 import app.criptopanel.portfolio.PortfolioStore
 import java.io.File
 import java.time.LocalDate
@@ -60,6 +61,9 @@ class AppContainer(demoKey: String, filesDir: File, notifier: AlertNotifier) {
 
     /** Portfolio and favourites; the only data the app keeps (and backs up). */
     val portfolioStore = PortfolioStore(File(filesDir, PORTFOLIO_FILE))
+
+    /** Password vault; outside the backed-up files on purpose. */
+    val vault = VaultStore(File(File(filesDir, "vault"), "vault.bin"))
 
     val pwnedPasswords: PwnedPasswordsApi = retrofit(HIBP_BASE_URL, client).create(PwnedPasswordsApi::class.java)
 

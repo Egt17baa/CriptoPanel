@@ -156,3 +156,8 @@ class VaultStore(
         _state.value = VaultState.NoVault
     }
 }
+
+/** Set just before the vault opens a system screen (file picker, QR scanner) so leaving the app for it does not lock. */
+object VaultLock {
+    @Volatile var keepOpenOnce = false
+}

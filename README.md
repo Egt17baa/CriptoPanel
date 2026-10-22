@@ -42,7 +42,10 @@ Diseño Material 3 siempre oscuro, en gris y negro, con paneles de vidrio sobre 
 - **Seguridad** (en Más): cifrar texto (`CP1:…`) y archivos (`.cpenc`, por bloques de 64 KiB) con AES-256-GCM o
   ChaCha20-Poly1305 y clave Argon2id (64 MiB, 3 pasadas); generador de contraseñas y frases (lista EFF) con entropía;
   comprobador de filtraciones (Have I Been Pwned, k-anonimato) y huella SHA-256 de archivos. Sin capturas de pantalla,
-  portapapeles que se borra a los 45 s. Formato y pruebas en `docs/superpowers/specs/2026-10-22-criptopanel-seguridad-design.md`.
+  portapapeles que se borra a los 45 s. **Bóveda** (contraseñas, frases semilla, notas y códigos 2FA): clave de datos
+  aleatoria envuelta con Argon2id de la contraseña maestra y, opcionalmente, con una clave del Android Keystore que exige
+  huella; se bloquea al salir y tras 5 min; fuera de la copia de Google, exportable cifrada. **Autenticador 2FA** (TOTP,
+  RFC 6238) con escáner de QR. Formato y pruebas en `docs/superpowers/specs/2026-10-22-criptopanel-seguridad-design.md`.
 - Al abrir la app por primera vez hay que aceptar los **términos** (`docs/google-play/terminos.md`). En Cartera, Alertas,
   Rendimientos y las herramientas se recuerda: *datos informativos, no asesoramiento financiero*.
 
@@ -102,7 +105,7 @@ gradle -p jvm-check test
 
 ## Estado de verificación
 
-- Versión 1.7.0: `./gradlew :app:testDebugUnitTest :app:lintRelease :app:assembleRelease` compila, 173 tests pasan
+- Versión 1.8.0: `./gradlew :app:testDebugUnitTest :app:lintRelease :app:assembleRelease` compila, 222 tests pasan
   (también en `jvm-check`) y lint no da errores.
 - Los fixtures de las fuentes nuevas son respuestas reales de CoinGecko, DefiLlama y Alternative.me (22-10-2026), recortadas.
 - Falta probarla en un móvil o emulador, sobre todo el aspecto de vidrio líquido: instala el APK y revisa cada pantalla.

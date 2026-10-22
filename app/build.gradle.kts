@@ -28,7 +28,7 @@ android {
         targetSdk = 36
         // Every Play upload needs a higher versionCode: pass -PversionCode=N (CI uses the run number).
         versionCode = (project.findProperty("versionCode") as String?)?.toInt() ?: 1
-        versionName = "1.7.0"
+        versionName = "1.8.0"
         buildConfigField("String", "COINGECKO_DEMO_KEY", "\"${localProps.getProperty("COINGECKO_DEMO_KEY", "")}\"")
     }
 
@@ -96,6 +96,8 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.bouncycastle)
+    implementation(libs.androidx.biometric)
+    implementation(libs.code.scanner)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

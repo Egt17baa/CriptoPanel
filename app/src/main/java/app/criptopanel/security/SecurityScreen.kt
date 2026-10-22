@@ -18,6 +18,8 @@ import app.criptopanel.core.ui.GlassCard
 data class SecurityTool(val route: String, val icon: String, val title: String, val subtitle: String)
 
 val SECURITY_TOOLS = listOf(
+    SecurityTool("security/vault", "🗄", "Bóveda de contraseñas", "Contraseñas, frases semilla y notas, con huella"),
+    SecurityTool("security/totp", "⏱", "Autenticador 2FA", "Códigos de 6 dígitos como Google Authenticator"),
     SecurityTool("security/text", "🔤", "Cifrar texto", "AES-256-GCM o ChaCha20-Poly1305, para enviar por chat o correo"),
     SecurityTool("security/file", "📁", "Cifrar archivos", "Cualquier archivo del móvil, de cualquier tamaño"),
     SecurityTool("security/generator", "🎲", "Generador de contraseñas", "Contraseñas y frases con su fortaleza"),
@@ -32,7 +34,7 @@ fun SecurityScreen(onTool: (String) -> Unit, onBack: () -> Unit) {
         LazyColumn(Modifier.padding(padding), contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             item {
                 Text(
-                    "Todo se hace en tu móvil: nada de lo que escribes aquí se guarda ni se envía.",
+                    "Todo se hace en tu móvil. Solo la bóveda guarda datos, cifrados y únicamente en este móvil.",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 4.dp),
                 )
@@ -63,14 +65,6 @@ fun SecurityScreen(onTool: (String) -> Unit, onBack: () -> Unit) {
                         ).forEach { Text("• $it", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
                     }
                 }
-            }
-            item {
-                Text(
-                    "Próximamente: bóveda de contraseñas con huella y autenticador 2FA.",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(4.dp),
-                )
             }
         }
     }

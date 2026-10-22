@@ -1,6 +1,6 @@
 # CriptoPanel: apartado «Seguridad» (diseño)
 
-Fecha: 22 de octubre de 2026. Subproyecto 5. Por su tamaño se entrega en dos fases:
+Fecha: 22 de octubre de 2026. Subproyecto 5. Estado: fases A (1.7.0) y B (1.8.0) implementadas. Por su tamaño se entrega en dos fases:
 
 - **Fase A (1.7.0):** núcleo criptográfico, cifrado de texto, cifrado de archivos, generador de contraseñas y comprobadores.
 - **Fase B (1.8.0):** bóveda de contraseñas con huella, autenticador 2FA y exportación de la bóveda.
@@ -60,7 +60,7 @@ La cabecera entera va como datos asociados (AAD): no se puede alterar sin que el
 - Las contraseñas se manejan como `CharArray` y se ponen a cero tras derivar la clave. Las claves derivadas también se ponen a cero al terminar.
 - Nada de lo escrito se guarda en disco en la fase A.
 
-## Fase B (resumen; diseño detallado al empezarla)
+## Fase B (implementada)
 
 - **Bóveda** (`files/vault.bin`, fuera de la copia de seguridad):
   - una clave de datos aleatoria (DEK) cifra las entradas con AES-256-GCM;
@@ -84,3 +84,9 @@ La cabecera entera va como datos asociados (AAD): no se puede alterar sin que el
 - **Generador:** longitud, conjuntos de caracteres, al menos uno de cada tipo, sin ambiguos y cálculo de la entropía; 7.776 palabras sin duplicados.
 - **HIBP:** se envían solo 5 caracteres, la respuesta se interpreta bien y las líneas de relleno con cuenta 0 se ignoran.
 - **SHA-256:** vector conocido («abc»).
+
+## Pruebas (fase B)
+
+- Bóveda: ida y vuelta, contraseña maestra incorrecta, datos manipulados, intercambio entre el bloque de la clave y el de los datos (rechazado gracias a datos asociados distintos), cambio de maestra, exportar e importar (con contraseña incorrecta no se toca nada), bloqueo por inactividad, huella rechazada a los 7 días.
+- TOTP: los vectores del RFC 6238 con SHA-1, SHA-256 y SHA-512; Base32 con espacios y minúsculas; enlaces `otpauth://` válidos y no válidos.
+- Se verifica a mano en el móvil: activar huella, bloquear al salir, escanear un QR de prueba y comparar el código con otra app de 2FA.

@@ -102,6 +102,10 @@ import app.criptopanel.security.GeneratorScreen
 import app.criptopanel.security.FileHashScreen
 import app.criptopanel.security.FileCryptoScreen
 import app.criptopanel.security.BreachScreen
+import app.criptopanel.security.VaultScreen
+import app.criptopanel.security.VaultEntryEditScreen
+import app.criptopanel.security.VaultEntryDetailScreen
+import app.criptopanel.security.EntryType
 
 private data class Tab(val route: String, val label: String, val icon: ImageVector)
 
@@ -367,6 +371,30 @@ fun AppNavHost(pendingRoute: MutableStateFlow<String?> = MutableStateFlow(null))
                     )
                 }
                 composable("security") { SecurityScreen(onTool = { nav.navigate(it) }, onBack = { nav.popBackStack() }) }
+                composable("security/vault") {
+                    VaultScreen(container.vault, totpOnly = false, onOpen = { nav.navigate("vault/entry/$it") }, onNew = { nav.navigate("vault/edit?type=${it.name}") }, onBack = { nav.popBackStack() })
+                }
+                composable("security/totp") {
+                    VaultScreen(container.vault, totpOnly = true, onOpen = { nav.navigate("vault/entry/$it") }, onNew = { nav.navigate("vault/edit?type=${it.name}") }, onBack = { nav.popBackStack() })
+                }
+                composable("vault/entry/{id}") { entry ->
+                    val id = entry.arguments?.getString("id").orEmpty()
+                    VaultEntryDetailScreen(container.vault, id, onEdit = { nav.navigate("vault/edit?id=$id") }, onBack = { nav.popBackStack() })
+                }
+                composable(
+                    "vault/edit?id={id}&type={type}",
+                    arguments = listOf(
+                        navArgument("id") { type = NavType.StringType; nullable = true; defaultValue = null },
+                        navArgument("type") { type = NavType.StringType; nullable = true; defaultValue = null },
+                    ),
+                ) { entry ->
+                    VaultEntryEditScreen(
+                        container.vault,
+                        id = entry.arguments?.getString("id"),
+                        initialType = EntryType.entries.firstOrNull { it.name == entry.arguments?.getString("type") } ?: EntryType.LOGIN,
+                        onDone = { nav.popBackStack() },
+                    )
+                }
                 composable("security/text") { TextCryptoScreen(onBack = { nav.popBackStack() }) }
                 composable("security/file") { FileCryptoScreen(onBack = { nav.popBackStack() }) }
                 composable("security/generator") { GeneratorScreen(onBack = { nav.popBackStack() }) }
