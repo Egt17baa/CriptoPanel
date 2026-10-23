@@ -4,6 +4,8 @@ import app.criptopanel.coins.CoinMarket
 import kotlinx.serialization.Serializable
 import java.time.LocalDate
 import java.time.ZoneId
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.EncodeDefault
 
 @Serializable
 enum class OperationType { BUY, SELL }
@@ -28,8 +30,10 @@ data class Operation(
 }
 
 @Serializable
+@OptIn(ExperimentalSerializationApi::class)
 data class PortfolioData(
-    val version: Int = 1,
+    /** Always written, so the file says which format it is. */
+    @EncodeDefault val version: Int = 1,
     val operations: List<Operation> = emptyList(),
     /** CoinGecko ids, in the order they were starred. */
     val favorites: List<String> = emptyList(),

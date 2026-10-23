@@ -4,6 +4,8 @@ import app.criptopanel.core.network.appJson
 import kotlinx.serialization.Serializable
 import java.security.SecureRandom
 import java.util.Base64
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.EncodeDefault
 
 @Serializable
 enum class EntryType(val label: String) { LOGIN("Acceso"), SEED("Frase semilla"), NOTE("Nota segura"), TOTP("Código 2FA") }
@@ -45,15 +47,21 @@ data class VaultKdf(val memoryKiB: Int, val iterations: Int, val parallelism: In
  * the DEK itself is stored wrapped by a key derived from the master password with Argon2id. All with AES-256-GCM.
  * Nothing in here is readable without the master password (or the device's biometric key, kept elsewhere).
  */
+/**
+ * Every field is always written, defaults included (the app's JSON leaves defaults out): up to 1.10.0 the format name,
+ * the revision and the check date were missing from the files, so they did not say what they were. Files without them
+ * are still read (a missing format counts as this one).
+ */
+@OptIn(ExperimentalSerializationApi::class)
 @Serializable
 data class VaultFile(
-    val format: String = FORMAT,
+    @EncodeDefault val format: String = FORMAT,
     /**
      * 1: only the two sealed blobs were authenticated. 2: every field is (see [VaultCrypto]).
      * Up to 1.9.3 the field was left out when it had its default value, so a missing one ([VERSION_UNKNOWN]) can be
      * either: the version whose associated data opens the blobs is the right one (see [VaultCrypto.resolve]).
      */
-    val version: Int = VERSION_UNKNOWN,
+    @EncodeDefault val version: Int = VERSION_UNKNOWN,
     val kdf: VaultKdf,
     /** Base64 salt for the master password. */
     val salt: String,
@@ -62,9 +70,9 @@ data class VaultFile(
     /** Base64 nonce ‖ entries JSON encrypted with the DEK. */
     val data: String,
     /** Last unlock with the master password (biometrics stop working 7 days after it). */
-    val masterCheckedAt: Long = 0,
+    @EncodeDefault val masterCheckedAt: Long = 0,
     /** Bumped on every save, and authenticated with the data: an older data blob cannot be spliced in. */
-    val revision: Long = 0,
+    @EncodeDefault val revision: Long = 0,
 ) {
     companion object {
         const val FORMAT = "criptopanel-vault"

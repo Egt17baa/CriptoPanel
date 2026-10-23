@@ -190,6 +190,10 @@ En octubre de 2026 se supo que las claves privadas de **ocho CA intermedias de e
 - Las huellas se comprobaron calculándolas desde los certificados publicados (emudhra.we-have-a-problem.com) y hay pruebas con el certificado real de una intermedia comprometida.
 - No cubre el WebView de los gráficos de TradingView (usa el almacén del sistema; solo muestra gráficos) ni otras apps del móvil: lo que lo resuelve del todo es la actualización de Android.
 
+## Archivos que dicen lo que son (1.10.1)
+
+El JSON de la app no escribe los valores por defecto, así que hasta 1.10.0 los archivos de bóveda (y sus copias exportadas) no llevaban `format` («criptopanel-vault»), y a veces tampoco `revision` ni `masterCheckedAt`; la cartera y las alertas no llevaban `version`. Desde 1.10.1 esos campos se escriben siempre (`@EncodeDefault`). Los archivos antiguos se siguen leyendo: sin `format` se toma como bóveda de CriptoPanel, sin `version` se prueban las dos versiones (ver 1.9.4). Un JSON con otro `format` se rechaza.
+
 ## Avisos
 
 - En Seguridad, en Términos y en Privacidad: las herramientas no han pasado una auditoría de seguridad independiente. Para fondos importantes se recomienda una wallet hardware y un gestor de contraseñas auditado.

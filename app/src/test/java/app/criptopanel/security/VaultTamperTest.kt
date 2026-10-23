@@ -125,4 +125,22 @@ class VaultTamperTest {
     @Test fun `new files always say their version`() {
         assertTrue(VaultCrypto.encodeFile(vault().first).contains("\"version\":2"))
     }
+
+    @Test fun `vault files say what they are, and older files without the format name still open`() {
+        val (v2, dek) = vault()
+        val json = VaultCrypto.encodeFile(v2)
+        listOf("\"format\":\"criptopanel-vault\"", "\"version\":2", "\"revision\":", "\"masterCheckedAt\":").forEach {
+            assertTrue(it, json.contains(it))
+        }
+        val old = VaultCrypto.decodeFile(json.replace("\"format\":\"criptopanel-vault\",", ""))
+        assertTrue(VaultCrypto.unlock(old, "maestra".toCharArray()).contentEquals(dek))
+        assertEquals(1, VaultCrypto.read(old, dek).size)
+        // Another app's JSON is refused as not a vault.
+        try {
+            VaultCrypto.unlock(VaultCrypto.decodeFile(json.replace("criptopanel-vault", "otra-app")), "maestra".toCharArray())
+            fail()
+        } catch (e: CryptoFailure) {
+            // expected
+        }
+    }
 }

@@ -1,6 +1,8 @@
 package app.criptopanel.alerts
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.EncodeDefault
 
 @Serializable
 enum class AlertKind(val forPortfolio: Boolean) {
@@ -40,7 +42,12 @@ data class Alert(
 )
 
 @Serializable
-data class AlertsData(val version: Int = 1, val alerts: List<Alert> = emptyList())
+@OptIn(ExperimentalSerializationApi::class)
+data class AlertsData(
+    /** Always written, so the file says which format it is. */
+    @EncodeDefault val version: Int = 1,
+    val alerts: List<Alert> = emptyList(),
+)
 
 private fun windowLabel(minutes: Int?): String = when (minutes) {
     null -> "—"
