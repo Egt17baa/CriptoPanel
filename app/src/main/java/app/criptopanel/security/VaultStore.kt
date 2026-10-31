@@ -158,6 +158,17 @@ class VaultStore(
         opened(known, key, epoch)
     }
 
+    /** Whether [master] is the vault's master password (nothing is opened or changed). */
+    suspend fun checkMaster(master: CharArray): Boolean = mutex.withLock {
+        val v = vault ?: return@withLock false
+        try {
+            withContext(compute) { VaultCrypto.unlock(v, master) }.fill(0)
+            true
+        } catch (e: CryptoFailure) {
+            false
+        }
+    }
+
     /** A copy of the open data key, to wrap it with the biometric key; null while locked. */
     fun dataKeyCopy(): ByteArray? = dek?.copyOf()
 

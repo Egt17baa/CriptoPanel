@@ -22,6 +22,8 @@ private const val ALIAS = "criptopanel_vault_biometric"
 private const val PREFS = "vault_biometric"
 private const val KEY_IV = "iv"
 private const val KEY_BLOB = "wrapped"
+private const val REVEAL_ALIAS = "criptopanel_vault_reveal"
+private const val KEY_REVEAL_GATE = "reveal_gate"
 
 /**
  * Wraps the vault's data key with an AES key that lives in the Android Keystore (secure hardware when available)
@@ -38,8 +40,8 @@ object BiometricVault {
 
     private fun keyStore() = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
 
-    private fun createKey(): SecretKey {
-        val spec = KeyGenParameterSpec.Builder(ALIAS, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
+    private fun createKey(alias: String = ALIAS): SecretKey {
+        val spec = KeyGenParameterSpec.Builder(alias, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
             .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
             .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
             .setKeySize(256)
@@ -53,7 +55,8 @@ object BiometricVault {
     }
 
     fun disable(context: Context) {
-        prefs(context).edit { clear() }
+        // Only the unlock key: the setting and key for viewing secrets are independent of it.
+        prefs(context).edit { remove(KEY_IV); remove(KEY_BLOB) }
         runCatching { keyStore().deleteEntry(ALIAS) }
     }
 
@@ -64,6 +67,8 @@ object BiometricVault {
         onOk: (Cipher) -> Unit,
         onError: (String) -> Unit,
         onCancel: () -> Unit = {},
+        /** The "use the master password" button; by default the same as cancelling. */
+        onNegative: () -> Unit = onCancel,
     ) {
         val info = BiometricPrompt.PromptInfo.Builder()
             .setTitle(title)
@@ -80,7 +85,9 @@ object BiometricVault {
                 }
 
                 override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                    if (errorCode == BiometricPrompt.ERROR_NEGATIVE_BUTTON || errorCode == BiometricPrompt.ERROR_USER_CANCELED) {
+                    if (errorCode == BiometricPrompt.ERROR_NEGATIVE_BUTTON) {
+                        onNegative()
+                    } else if (errorCode == BiometricPrompt.ERROR_USER_CANCELED) {
                         onCancel()
                     } else {
                         onError(errString.toString())
@@ -143,5 +150,49 @@ object BiometricVault {
                 onError("No se pudo desbloquear con la huella")
             }
         }, onError = onError)
+    }
+
+    // ---- Fingerprint for each secret --------------------------------------------------------------------------
+
+    /** Whether secrets ask for the fingerprint (or the master password) before they are shown or copied. On by default. */
+    fun revealEnabled(context: Context): Boolean = prefs(context).getBoolean(KEY_REVEAL_GATE, true)
+
+    fun setRevealEnabled(context: Context, on: Boolean) {
+        prefs(context).edit { putBoolean(KEY_REVEAL_GATE, on) }
+    }
+
+    /** Forgets the key used for viewing secrets; a new one is made at the next use (after the master password). */
+    fun rearmReveal(context: Context) {
+        runCatching { keyStore().deleteEntry(REVEAL_ALIAS) }
+    }
+
+    /**
+     * One fingerprint check, valid for this single use: a Keystore key that needs a strong biometric every time is
+     * used through the prompt. [onNeedsMaster] when the phone's fingerprints changed (the key is gone: the master
+     * password is needed once to arm a new one) or when the user chose "use the master password".
+     */
+    fun authorizeReveal(
+        activity: FragmentActivity,
+        onOk: () -> Unit,
+        onError: (String) -> Unit,
+        onNeedsMaster: () -> Unit,
+    ) {
+        val cipher = try {
+            val key = keyStore().getKey(REVEAL_ALIAS, null) as? SecretKey ?: createKey(REVEAL_ALIAS)
+            Cipher.getInstance("AES/GCM/NoPadding").apply { init(Cipher.ENCRYPT_MODE, key) }
+        } catch (e: KeyPermanentlyInvalidatedException) {
+            rearmReveal(activity)
+            return onNeedsMaster()
+        } catch (e: Exception) {
+            return onError("No se pudo usar la huella")
+        }
+        prompt(activity, "Ver este secreto", cipher, onOk = { c ->
+            try {
+                c.doFinal(ByteArray(1)) // Only works if the Keystore accepted the fingerprint for this use.
+                onOk()
+            } catch (e: Exception) {
+                onError("No se pudo comprobar la huella")
+            }
+        }, onError = onError, onCancel = {}, onNegative = onNeedsMaster)
     }
 }

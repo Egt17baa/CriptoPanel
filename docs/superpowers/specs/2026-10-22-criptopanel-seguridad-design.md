@@ -194,6 +194,18 @@ En octubre de 2026 se supo que las claves privadas de **ocho CA intermedias de e
 
 El JSON de la app no escribe los valores por defecto, así que hasta 1.10.0 los archivos de bóveda (y sus copias exportadas) no llevaban `format` («criptopanel-vault»), y a veces tampoco `revision` ni `masterCheckedAt`; la cartera y las alertas no llevaban `version`. Desde 1.10.1 esos campos se escriben siempre (`@EncodeDefault`). Los archivos antiguos se siguen leyendo: sin `format` se toma como bóveda de CriptoPanel, sin `version` se prueban las dos versiones (ver 1.9.4). Un JSON con otro `format` se rechaza.
 
+## Huella para ver cada secreto (1.11.0)
+
+Petición del usuario, para dificultar que alguien con el móvil desbloqueado (o con la bóveda abierta) vea los secretos.
+
+- **Qué pide la huella:** mostrar o copiar la contraseña, la frase semilla, la clave secreta 2FA, las notas seguras y el código 2FA (en el detalle y en la lista del autenticador), y abrir el **editor** de una entrada (que enseña esos datos en claro). El usuario, la web y los títulos no.
+- **Cada vez:** una clave AES del **Android Keystore** (`criptopanel_vault_reveal`) que exige una huella fuerte en cada uso (`setUserAuthenticationRequired`, validez 0 en Android 11+) se usa a través del `BiometricPrompt` con `CryptoObject`; solo si el Keystore acepta la huella para ese uso se muestra el secreto. Se invalida al añadir huellas al móvil: entonces se pide la contraseña maestra una vez y se crea una clave nueva.
+- **Alternativa:** el botón «Usar contraseña maestra» del diálogo, o directamente la contraseña si el móvil no tiene huella.
+- **Tiempo:** el secreto se vuelve a ocultar a los 30 s; una pantalla que se cierra lo oculta.
+- **Ajuste:** menú de la bóveda → «Huella para ver secretos» (activada por defecto). Desactivarla también pide la huella.
+- **Pruebas:** la comprobación de la contraseña maestra (`checkMaster`) sin abrir ni cambiar nada; la huella en sí solo se puede probar en un móvil.
+- **Límite:** con root, quien pueda modificar la app o leer la memoria puede ver el secreto después de que el usuario lo desbloquee, o cambiar el ajuste. La huella protege del que tiene el móvil en la mano, no de un móvil comprometido.
+
 ## Avisos
 
 - En Seguridad, en Términos y en Privacidad: las herramientas no han pasado una auditoría de seguridad independiente. Para fondos importantes se recomienda una wallet hardware y un gestor de contraseñas auditado.

@@ -51,19 +51,27 @@ private fun LockedNotice(onBack: () -> Unit) {
 }
 
 @Composable
-private fun Field(label: String, value: String, secret: Boolean = false, mono: Boolean = false) {
+private fun Field(label: String, value: String, gate: RevealGate, secret: Boolean = false, mono: Boolean = false) {
     if (value.isBlank()) return
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     var shown by remember { mutableStateOf(!secret) }
+    // A secret hides itself again a few seconds after the fingerprint unlocked it.
+    LaunchedEffect(shown) {
+        if (secret && shown) {
+            delay(REVEAL_SECONDS * 1_000L)
+            shown = false
+        }
+    }
     GlassCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             // No text selection: the system "Copy" would skip the sensitive flag and the 45-second clearing.
             Text(if (shown) value else "•".repeat(minOf(value.length, 16)), fontFamily = if (mono || secret) FontFamily.Monospace else FontFamily.Default)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilledTonalButton(onClick = { copySensitive(context, value) }) { Text("Copiar") }
-                if (secret) OutlinedButton(onClick = { shown = !shown }) { Text(if (shown) "Ocultar" else "Mostrar") }
+                FilledTonalButton(onClick = { if (secret) gate.request { copySensitive(context, value) } else copySensitive(context, value) }) { Text("Copiar") }
+                if (secret) {
+                    OutlinedButton(onClick = { if (shown) shown = false else gate.request { shown = true } }) { Text(if (shown) "Ocultar" else "Mostrar") }
+                }
             }
         }
     }
@@ -77,6 +85,15 @@ fun VaultEntryDetailScreen(store: VaultStore, id: String, onEdit: () -> Unit, on
     val entry = (state as? VaultState.Unlocked)?.entries?.firstOrNull { it.id == id }
     if (entry == null) return LockedNotice(onBack)
     val scope = rememberCoroutineScope()
+    val gate = rememberRevealGate(store)
+    val context = LocalContext.current
+    var codeShown by remember { mutableStateOf(false) }
+    LaunchedEffect(codeShown) {
+        if (codeShown) {
+            delay(REVEAL_SECONDS * 1_000L)
+            codeShown = false
+        }
+    }
     var confirm by remember { mutableStateOf(false) }
     var failed by remember { mutableStateOf(false) }
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -94,29 +111,42 @@ fun VaultEntryDetailScreen(store: VaultStore, id: String, onEdit: () -> Unit, on
                     GlassCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(listOf(t.issuer, t.account).filter { it.isNotBlank() }.joinToString(" · "), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text(code.chunked(3).joinToString(" "), style = MaterialTheme.typography.displaySmall, fontFamily = FontFamily.Monospace)
+                            val visible = codeShown || !gate.enabled
+                            Text(
+                                if (visible) code.chunked(3).joinToString(" ") else "••• •••",
+                                style = MaterialTheme.typography.displaySmall,
+                                fontFamily = FontFamily.Monospace,
+                            )
                             Text("Caduca en $left s", color = if (left <= 5) NegativeColor else MaterialTheme.colorScheme.onSurfaceVariant)
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                FilledTonalButton(onClick = { gate.request { copySensitive(context, code) } }) { Text("Copiar") }
+                                if (gate.enabled) {
+                                    OutlinedButton(onClick = { if (codeShown) codeShown = false else gate.request { codeShown = true } }) {
+                                        Text(if (codeShown) "Ocultar" else "Ver código")
+                                    }
+                                }
+                            }
                         }
                     }
-                    Field("Código", code, mono = true)
                 }
             }
-            Field("Usuario", entry.username)
-            Field("Contraseña", entry.password, secret = true)
-            Field("Web", entry.url)
+            Field("Usuario", entry.username, gate)
+            Field("Contraseña", entry.password, gate, secret = true)
+            Field("Web", entry.url, gate)
             if (entry.seedWords.isNotBlank()) {
                 val (n, valid) = seedWordCount(entry.seedWords)
-                Field("Frase semilla ($n palabras${if (valid) "" else ", número poco habitual"})", entry.seedWords, secret = true)
+                Field("Frase semilla ($n palabras${if (valid) "" else ", número poco habitual"})", entry.seedWords, gate, secret = true)
                 Text(
                     "Nunca escribas esta frase en una web ni se la des a nadie: quien la tenga controla tus fondos.",
                     style = MaterialTheme.typography.bodySmall,
                     color = NegativeColor,
                 )
             }
-            Field("Notas", entry.notes, secret = entry.type == EntryType.NOTE)
-            entry.totp?.let { Field("Clave secreta 2FA", it.secret, secret = true, mono = true) }
+            Field("Notas", entry.notes, gate, secret = entry.type == EntryType.NOTE)
+            entry.totp?.let { Field("Clave secreta 2FA", it.secret, gate, secret = true, mono = true) }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = onEdit) { Text("Editar") }
+                // The editor shows the secrets in the clear, so it asks for the fingerprint like "Mostrar" does.
+                Button(onClick = { gate.request(onEdit) }) { Text("Editar") }
                 TextButton(onClick = { confirm = true }) { Text("Borrar", color = NegativeColor) }
             }
         }

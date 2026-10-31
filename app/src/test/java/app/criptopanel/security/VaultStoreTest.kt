@@ -191,4 +191,16 @@ class VaultStoreTest {
         }
         assertEquals(VaultState.NoVault, s.state.value)
     }
+
+    @Test fun `the master password can be checked without opening or changing anything`() = runTest {
+        val s = store().apply { load(); create("maestra larga".toCharArray()); upsert(entry("1", "Wallet")) }
+        val before = File(tmp.root, "vault.bin").readText()
+        assertTrue(s.checkMaster("maestra larga".toCharArray()))
+        assertFalse(s.checkMaster("otra contraseña".toCharArray()))
+        assertEquals(before, File(tmp.root, "vault.bin").readText())
+        assertEquals(1, (s.state.value as VaultState.Unlocked).entries.size)
+        s.lock()
+        assertTrue(s.checkMaster("maestra larga".toCharArray()))
+        assertEquals(VaultState.Locked, s.state.value)
+    }
 }

@@ -49,6 +49,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import app.criptopanel.portfolio.readAtMost
@@ -74,7 +75,7 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-private tailrec fun Context.fragmentActivity(): FragmentActivity? = when (this) {
+internal tailrec fun Context.fragmentActivity(): FragmentActivity? = when (this) {
     is FragmentActivity -> this
     is ContextWrapper -> baseContext.fragmentActivity()
     else -> null
@@ -121,6 +122,7 @@ fun VaultScreen(store: VaultStore, totpOnly: Boolean, onOpen: (String) -> Unit, 
     val state by store.state.collectAsStateWithLifecycle()
     LaunchedEffect(store) { store.load() }
     val snackbar = remember { SnackbarHostState() }
+    val gate = rememberRevealGate(store)
     var menu by remember { mutableStateOf(false) }
     var dialog by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
@@ -175,6 +177,22 @@ fun VaultScreen(store: VaultStore, totpOnly: Boolean, onOpen: (String) -> Unit, 
                                     }
                                 })
                             }
+                            DropdownMenuItem(
+                                text = { Text(if (gate.enabled) "Huella para ver secretos: activada" else "Huella para ver secretos: desactivada") },
+                                onClick = {
+                                    menu = false
+                                    if (gate.enabled) {
+                                        // Switching it off needs the fingerprint itself, or a passer-by could do it.
+                                        gate.request {
+                                            BiometricVault.setRevealEnabled(context, false)
+                                            scope.launch { snackbar.showSnackbar("Los secretos se verán sin pedir huella") }
+                                        }
+                                    } else {
+                                        BiometricVault.setRevealEnabled(context, true)
+                                        scope.launch { snackbar.showSnackbar("Los secretos pedirán la huella cada vez") }
+                                    }
+                                },
+                            )
                             DropdownMenuItem(text = { Text("Exportar copia cifrada") }, onClick = {
                                 menu = false
                                 VaultLock.keepOpenOnce = true
@@ -209,7 +227,7 @@ fun VaultScreen(store: VaultStore, totpOnly: Boolean, onOpen: (String) -> Unit, 
                 VaultState.Loading -> CircularProgressIndicator(Modifier.align(Alignment.Center))
                 VaultState.NoVault -> CreateVault(store)
                 VaultState.Locked -> UnlockVault(store)
-                is VaultState.Unlocked -> EntryList(s.entries, totpOnly, onOpen)
+                is VaultState.Unlocked -> EntryList(s.entries, totpOnly, gate, onOpen)
             }
         }
     }
@@ -270,7 +288,7 @@ fun VaultScreen(store: VaultStore, totpOnly: Boolean, onOpen: (String) -> Unit, 
 }
 
 @Composable
-private fun PasswordDialog(
+internal fun PasswordDialog(
     title: String,
     confirmLabel: String,
     onDismiss: () -> Unit,
@@ -426,10 +444,11 @@ private fun UnlockVault(store: VaultStore) {
 }
 
 @Composable
-private fun EntryList(entries: List<VaultEntry>, totpOnly: Boolean, onOpen: (String) -> Unit) {
+private fun EntryList(entries: List<VaultEntry>, totpOnly: Boolean, gate: RevealGate, onOpen: (String) -> Unit) {
     var query by remember { mutableStateOf("") }
     var type by remember { mutableStateOf<EntryType?>(if (totpOnly) EntryType.TOTP else null) }
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    val revealedAt = remember { mutableStateMapOf<String, Long>() }
     LaunchedEffect(Unit) {
         while (true) {
             now = System.currentTimeMillis()
@@ -482,8 +501,17 @@ private fun EntryList(entries: List<VaultEntry>, totpOnly: Boolean, onOpen: (Str
                 }
                 e.totp?.let { t ->
                     totpCode(t, now)?.let { (code, left) ->
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text(code.chunked(3).joinToString(" "), fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.titleMedium)
+                        val visible = !gate.enabled || (revealedAt[e.id] ?: 0L) > now - REVEAL_SECONDS * 1_000L
+                        Column(
+                            horizontalAlignment = Alignment.End,
+                            // Tapping the hidden code asks for the fingerprint, then shows it for a few seconds.
+                            modifier = if (visible) Modifier else Modifier.clickable { gate.request { revealedAt[e.id] = System.currentTimeMillis() } },
+                        ) {
+                            Text(
+                                if (visible) code.chunked(3).joinToString(" ") else "••• •••",
+                                fontFamily = FontFamily.Monospace,
+                                style = MaterialTheme.typography.titleMedium,
+                            )
                             Text("${left}s", style = MaterialTheme.typography.labelSmall, color = if (left <= 5) NegativeColor else MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
