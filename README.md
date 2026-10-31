@@ -114,3 +114,11 @@ gradle -p jvm-check test
   (también en `jvm-check`) y lint no da errores.
 - Los fixtures de las fuentes nuevas son respuestas reales de CoinGecko, DefiLlama y Alternative.me (22-10-2026), recortadas.
 - Falta probarla en un móvil o emulador, sobre todo el aspecto de vidrio líquido: instala el APK y revisa cada pantalla.
+
+## Licencia
+
+Código abierto bajo la **Apache License 2.0** (ver [`LICENSE`](LICENSE)); los avisos y las licencias de lo que se
+incluye de terceros están en [`NOTICE`](NOTICE). Puedes usarlo, modificarlo y distribuirlo, también con fines
+comerciales, conservando los avisos de copyright y de la licencia e indicando los cambios. Se ofrece **«tal cual»**,
+sin garantías: no es asesoramiento financiero y el autor no responde de pérdidas derivadas de su uso (cláusulas 7 y 8
+de la licencia).

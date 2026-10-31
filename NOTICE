@@ -1,0 +1,26 @@
+CriptoPanel
+Copyright 2026 Egt17baa
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+It includes or uses the following third-party material, under its own terms:
+
+- Bouncy Castle Crypto APIs (bcprov-jdk18on)
+  Copyright (c) 2000-2024 The Legion of the Bouncy Castle Inc. (https://www.bouncycastle.org)
+  MIT License (text in app/src/main/assets/licenses/bouncycastle.txt)
+
+- EFF Large Wordlist for Passphrases (app/src/main/assets/eff_large_wordlist.txt)
+  Electronic Frontier Foundation, https://www.eff.org/dice
+  Creative Commons Attribution 3.0 United States (CC BY 3.0 US)
+
+- BIP-39 English wordlist (app/src/main/assets/bip39_english.txt)
+  https://github.com/bitcoin/bips/blob/master/bip-0039/english.txt
+  MIT License (BIP-39)
+
+- AndroidX, Jetpack Compose, Material 3, Kotlin, kotlinx.serialization, kotlinx.coroutines, OkHttp, Retrofit,
+  Coil, ML Kit code scanner and the other libraries listed in gradle/libs.versions.toml, each under its own
+  license (Apache License 2.0 for almost all of them).
+
+The data shown by the app comes from public services (CoinGecko, CoinLore, DefiLlama, Binance market data,
+Alternative.me, Frankfurter / ECB, Have I Been Pwned, TradingView) under their own terms; their names and logos
+belong to their owners.
